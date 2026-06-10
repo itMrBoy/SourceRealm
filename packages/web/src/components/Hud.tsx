@@ -1,4 +1,4 @@
-import { levelInfo } from '@code-quest/shared'
+import { TITLES, levelInfo } from '@code-quest/shared'
 import { useStore } from '../store.js'
 
 export function Hud(): JSX.Element {
@@ -72,8 +72,7 @@ export function Hud(): JSX.Element {
 
 /** 返回 xp 所处称号区间的下界 XP(用于计算进度条) */
 function lowerBound(xp: number): number {
-  const titles = [0, 300, 800, 1600]
   let lower = 0
-  for (const t of titles) if (xp >= t) lower = t
+  for (const t of TITLES) if (xp >= t.xp) lower = t.xp
   return lower
 }
