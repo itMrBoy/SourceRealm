@@ -1,0 +1,19 @@
+{
+  "name": "@code-quest/server",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@code-quest/shared": "*",
+    "execa": "^9.3.0",
+    "fastify": "^4.28.0",
+    "open": "^10.1.0",
+    "tsx": "^4.15.0",
+    "zod": "^3.23.0",
+    "zod-to-json-schema": "^3.23.0"
+  }
+}
