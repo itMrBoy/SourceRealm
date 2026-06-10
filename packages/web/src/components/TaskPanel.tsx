@@ -3,6 +3,9 @@ import type { Task } from '@code-quest/shared'
 import { useRun, runAccuracy } from '../game/run.js'
 import { QuizTask } from './tasks/QuizTask.js'
 import { TreasureHuntTask } from './tasks/TreasureHuntTask.js'
+import { CallChainTask } from './tasks/CallChainTask.js'
+import { CodeFillTask } from './tasks/CodeFillTask.js'
+import { CodeTypeTask } from './tasks/CodeTypeTask.js'
 
 interface TaskPanelProps {
   task: Task
@@ -163,13 +166,12 @@ function Answering({
           onGuideMe={onGuideMe}
         />
       )
-    default:
-      return (
-        <div className="nes-container is-rounded tp-todo">
-          <p>该任务类型即将实现</p>
-          <p className="tp-todo-type">({task.type})</p>
-        </div>
-      )
+    case 'call-chain':
+      return <CallChainTask task={task} onAnswer={onAnswer} />
+    case 'code-fill':
+      return <CodeFillTask task={task} onAnswer={onAnswer} />
+    case 'code-type':
+      return <CodeTypeTask task={task} onAnswer={onAnswer} />
   }
 }
 

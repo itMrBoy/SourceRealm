@@ -89,8 +89,28 @@ function levelDraftFor(file: string) {
         refs: [{ file, startLine: 1, endLine: 3, contentHash: '' }],
       },
       {
-        id: 't2', type: 'code-type', narrative: '临摹这段代码以记住它。', explanation: '熟能生巧。',
-        ref: { file, startLine: 5, endLine: 7, contentHash: '' },
+        id: 't2', type: 'treasure-hunt', narrative: '宝藏藏在导出语句里。',
+        instruction: '在源码中找到 module.exports 那一行并点击。',
+        hint: '通常在文件末尾。', explanation: '导出决定了模块对外暴露什么。',
+        target: { file, startLine: 1, endLine: 1, contentHash: '' },
+      },
+      {
+        id: 't3', type: 'call-chain', narrative: '理一理执行顺序。', explanation: '从入口到工具函数,层层调用。',
+        items: [
+          { label: '首先进入第一个函数', ref: { file, startLine: 1, endLine: 1, contentHash: '' } },
+          { label: '随后做条件判断', ref: { file, startLine: 2, endLine: 2, contentHash: '' } },
+          { label: '最后返回结果', ref: { file, startLine: 3, endLine: 3, contentHash: '' } },
+        ],
+        order: [0, 1, 2],
+      },
+      {
+        id: 't4', type: 'code-fill', narrative: '补全缺失的一行。', explanation: '动手填空加深记忆。',
+        ref: { file, startLine: 1, endLine: 3, contentHash: '' },
+        blankLines: [3], answers: ['return token(user)'],
+      },
+      {
+        id: 't5', type: 'code-type', narrative: '临摹这段代码以记住它。', explanation: '熟能生巧。',
+        ref: { file, startLine: 6, endLine: 8, contentHash: '' },
       },
     ],
   }

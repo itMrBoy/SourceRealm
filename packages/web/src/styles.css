@@ -883,6 +883,194 @@ body {
   font-size: 11px;
 }
 
+/* ---------- CallChain(拖拽排序) ---------- */
+.cc-list {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cc-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background-color: var(--cq-bg-alt);
+  border: 2px solid var(--cq-gold-dim);
+  border-radius: 4px;
+  cursor: grab;
+  font-size: 11px;
+  line-height: 1.5;
+  touch-action: none;
+}
+
+.cc-card:active {
+  cursor: grabbing;
+}
+
+.cc-card--dragging {
+  opacity: 0.8;
+  border-color: var(--cq-gold);
+  box-shadow: 0 4px 0 var(--cq-gold-dim);
+}
+
+.cc-handle {
+  color: var(--cq-gold-dim);
+  flex-shrink: 0;
+}
+
+.cc-pos {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--cq-accent);
+  color: #06201d;
+  border-radius: 50%;
+  font-size: 10px;
+}
+
+.cc-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cc-ref {
+  font-size: 9px;
+  color: var(--cq-accent);
+  opacity: 0.85;
+}
+
+/* ---------- CodeFill(填空) ---------- */
+.cf-code {
+  margin: 12px 0;
+  padding: 12px;
+  background-color: #0d1117;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.cf-line {
+  display: flex;
+  align-items: center;
+  white-space: pre;
+}
+
+.cf-ln {
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+  padding-right: 12px;
+  color: #5b6472;
+  user-select: none;
+}
+
+.cf-text {
+  white-space: pre;
+}
+
+.cf-input {
+  display: inline-block;
+  width: auto;
+  min-width: 160px;
+  padding: 2px 6px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+/* ---------- CodeType(打字临摹) ---------- */
+.ct-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--cq-accent);
+  margin: 8px 0;
+}
+
+.ct-wrong {
+  color: var(--cq-danger);
+}
+
+.ct-display {
+  margin: 8px 0;
+  padding: 12px;
+  background-color: #0d1117;
+  border: 2px solid var(--cq-gold-dim);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 13px;
+  line-height: 1.7;
+  min-height: 80px;
+  cursor: text;
+}
+
+.ct-display--gold {
+  border-color: var(--cq-gold);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
+.ct-char {
+  color: #6b7280;
+}
+
+.ct-char--ok {
+  color: #4caf50;
+}
+
+.ct-char--bad {
+  color: var(--cq-danger);
+  background-color: rgba(232, 74, 95, 0.25);
+}
+
+.ct-char--caret {
+  border-left: 2px solid var(--cq-gold);
+  margin-left: -2px;
+  animation: ct-blink 1s step-end infinite;
+}
+
+@keyframes ct-blink {
+  50% {
+    border-left-color: transparent;
+  }
+}
+
+.ct-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  left: -9999px;
+}
+
+.ct-complete {
+  color: #4caf50;
+  font-size: 12px;
+}
+
+.ct-complete--gold {
+  color: var(--cq-gold);
+}
+
+.ct-skip {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--cq-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 10px;
+}
+
 @media (max-width: 720px) {
   .level-grid {
     grid-template-columns: 1fr;
