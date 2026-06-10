@@ -84,6 +84,18 @@ describe('HTTP API', () => {
       method: 'POST', url: `/api/projects/${id}/progress/file-read`, payload: { file: 'src/auth.js' },
     })).json()
     expect(read.progress.filesRead).toContain('src/auth.js')
+
+    // 重复通关不重复累计 XP,只补发更高成绩的差额
+    const again = (await a.inject({
+      method: 'POST', url: `/api/projects/${id}/progress/level`,
+      payload: { levelId: 'lv-auth', result: { rating: 'S', accuracy: 1, maxCombo: 2, xp: 35 }, taskCount: 2 },
+    })).json()
+    expect(again.progress.xp).toBe(35)
+    const better = (await a.inject({
+      method: 'POST', url: `/api/projects/${id}/progress/level`,
+      payload: { levelId: 'lv-auth', result: { rating: 'S', accuracy: 1, maxCombo: 2, xp: 50 }, taskCount: 2 },
+    })).json()
+    expect(better.progress.xp).toBe(50)
   })
 
   it('重复导入同一路径复用同一项目', async () => {

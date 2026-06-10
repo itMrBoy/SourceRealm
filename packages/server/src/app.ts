@@ -38,7 +38,10 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 
   async function startGeneration(store: ProjectStore, scanner: RepoScanner): Promise<void> {
     if (generators.has(store.id)) return
-    const gen = new LevelGenerator(store, scanner, await getProvider())
+    const llm = await getProvider()
+    // getProvider 有 await,重查一次防止并发导入同一项目时双开生成器
+    if (generators.has(store.id)) return
+    const gen = new LevelGenerator(store, scanner, llm)
     generators.set(store.id, gen)
     void gen.run().finally(() => generators.delete(store.id))
   }
@@ -182,7 +185,12 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
     const course = await store.readCourse()
     if (!course) return reply.code(404).send({ error: '课程不存在' })
     const progress: Progress = (await store.readProgress()) ?? emptyProgress()
-    const { progress: next, newBadges } = applyLevelResult(progress, course, body.data)
+    const prev = progress.completedLevels[body.data.levelId]
+    const { progress: applied, newBadges } = applyLevelResult(progress, course, body.data)
+    // 重复通关不重复累计 XP:总 XP 只补发比上次更高的差额(允许刷成绩,防刷分)
+    const next = prev
+      ? { ...applied, xp: progress.xp + Math.max(0, body.data.result.xp - prev.xp) }
+      : applied
     await store.writeProgress(next)
     return { progress: next, newBadges }
   })
