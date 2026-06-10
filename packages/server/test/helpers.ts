@@ -29,6 +29,27 @@ export async function makeFixtureRepo(): Promise<string> {
   return dir
 }
 
+/** 在 fixture 仓库提交一组变更:value 为 null 表示删除文件 */
+export async function commitChange(
+  dir: string,
+  files: Record<string, string | null>,
+  msg: string,
+): Promise<void> {
+  for (const [rel, value] of Object.entries(files)) {
+    const abs = path.join(dir, rel)
+    if (value === null) {
+      await fs.rm(abs, { force: true })
+    } else {
+      await fs.mkdir(path.dirname(abs), { recursive: true })
+      await fs.writeFile(abs, value)
+    }
+  }
+  const git = (...args: string[]) =>
+    execa('git', ['-c', 'user.email=t@t.dev', '-c', 'user.name=tester', ...args], { cwd: dir })
+  await git('add', '-A')
+  await git('commit', '-m', msg)
+}
+
 /** 临时数据目录(隔离 ~/.code-quest) */
 export async function makeDataHome(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cq-home-'))
