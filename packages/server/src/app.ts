@@ -100,6 +100,16 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 
   app.get('/api/projects', async () => ({ projects: await ProjectStore.list() }))
 
+  // 当前 AI Provider(导入向导展示用;不触发懒探测之外的副作用)
+  app.get('/api/provider', async () => {
+    try {
+      const llm = await getProvider()
+      return { available: true, name: llm.name }
+    } catch (err) {
+      return { available: false, error: String((err as Error).message) }
+    }
+  })
+
   app.get<{ Params: { id: string } }>('/api/projects/:id', async (req, reply) => {
     const store = new ProjectStore(req.params.id)
     const meta = await store.readMeta()

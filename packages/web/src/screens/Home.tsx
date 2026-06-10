@@ -30,6 +30,7 @@ export function Home(): JSX.Element {
   const [path, setPath] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [provider, setProvider] = useState<{ available: boolean; name?: string; error?: string } | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -43,6 +44,14 @@ export function Home(): JSX.Element {
       })
       .finally(() => {
         if (alive) setLoadingList(false)
+      })
+    api
+      .getProvider()
+      .then((p) => {
+        if (alive) setProvider(p)
+      })
+      .catch(() => {
+        /* Provider 探测失败不阻断界面 */
       })
     return () => {
       alive = false
@@ -91,6 +100,13 @@ export function Home(): JSX.Element {
       <section className="nes-container is-dark with-title home-new">
         <p className="title">新游戏</p>
         <p className="home-hint">输入本地仓库路径,开启一段源码冒险。</p>
+        {provider && (
+          <p className={`home-provider ${provider.available ? '' : 'home-provider--missing'}`}>
+            {provider.available
+              ? `🤖 AI 引擎:${provider.name === 'claude-cli' ? 'Claude Code CLI' : provider.name === 'anthropic-api' ? 'Anthropic API' : provider.name}`
+              : `⚠ 未检测到可用 AI:${provider.error ?? '请安装 Claude Code CLI 或设置 ANTHROPIC_API_KEY'}`}
+          </p>
+        )}
         <div className="nes-field home-field">
           <label htmlFor="repo-path">仓库路径</label>
           <input

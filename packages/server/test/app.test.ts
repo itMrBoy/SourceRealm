@@ -56,6 +56,13 @@ describe('HTTP API', () => {
     expect(res.json().error).toContain('不是有效目录')
   })
 
+  it('GET /api/provider 返回当前 Provider 信息', async () => {
+    const a = await app()
+    const res = await a.inject({ method: 'GET', url: '/api/provider' })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toEqual({ available: true, name: 'mock' })
+  })
+
   it('导入 → 自动生成 → 读课程与关卡 → 读源码 → 提交通关', async () => {
     const a = await app()
     const imported = await a.inject({ method: 'POST', url: '/api/projects', payload: { path: repo } })

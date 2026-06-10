@@ -126,6 +126,16 @@ body {
   opacity: 0.8;
 }
 
+.home-provider {
+  font-size: 10px;
+  color: var(--cq-gold);
+  margin: 4px 0 8px;
+}
+
+.home-provider--missing {
+  color: #e76e55;
+}
+
 .home-field {
   margin: 12px 0;
 }

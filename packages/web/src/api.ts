@@ -35,6 +35,10 @@ export async function listProjects(): Promise<ProjectMeta[]> {
   return data.projects
 }
 
+export async function getProvider(): Promise<{ available: boolean; name?: string; error?: string }> {
+  return request('/provider')
+}
+
 export async function getProject(
   id: string,
 ): Promise<{ meta: ProjectMeta; course: Course | null; progress: Progress }> {
