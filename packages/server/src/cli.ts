@@ -10,7 +10,7 @@ await app.listen({ port })
 const url = `http://localhost:${port}`
 const distPath = path.resolve(fileURLToPath(import.meta.url), '../../../web/dist')
 const hasDist = fs.existsSync(path.join(distPath, 'index.html'))
-console.log(`🎮 CodeQuest 已启动: ${url}`)
+console.log(`🎮 源界 SourceRealm 已启动: ${url}`)
 if (hasDist) {
   console.log('   在浏览器中开始你的源码冒险吧!')
 } else {

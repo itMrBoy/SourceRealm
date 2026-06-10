@@ -65,7 +65,7 @@ export function CertScreen(): JSX.Element {
         <div className="cert-card">
           <h1 className="cert-card-title">🏆 通关证书</h1>
           <p className="cert-project">{projectName || '未命名项目'}</p>
-          <p className="cert-line">已通关 CodeQuest 源码闯关</p>
+          <p className="cert-line">已通关「源界 SourceRealm」源码闯关</p>
           <ul className="cert-stats">
             <li>总 XP:{progress.xp}</li>
             <li>通关关卡:{completions.length}</li>

@@ -93,8 +93,8 @@ export function Home(): JSX.Element {
   return (
     <main className="home">
       <div className="home-hero">
-        <h1 className="home-title">CodeQuest</h1>
-        <p className="home-subtitle blink">源码闯关阅读器</p>
+        <h1 className="home-title">源界 SourceRealm</h1>
+        <p className="home-subtitle blink">每个仓库,都是一个待探索的世界</p>
       </div>
 
       <section className="nes-container is-dark with-title home-new">
