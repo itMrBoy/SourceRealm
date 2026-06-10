@@ -62,6 +62,7 @@ export const TaskSchema = z
     CodeFillTaskSchema,
     CodeTypeTaskSchema,
   ])
+  // Zod v3 的 discriminatedUnion 不接受 .refine() 过的成员,跨字段校验只能上提到这里
   .superRefine((t, ctx) => {
     if (t.type === 'call-chain') {
       if (t.order.length !== t.items.length || new Set(t.order).size !== t.items.length) {
