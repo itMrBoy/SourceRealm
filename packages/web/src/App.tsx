@@ -2,6 +2,7 @@ import { useStore } from './store.js'
 import { Home } from './screens/Home.js'
 import { Generating } from './screens/Generating.js'
 import { MapScreen } from './screens/MapScreen.js'
+import { LevelScreen } from './screens/LevelScreen.js'
 
 function ScreenPlaceholder({ label }: { label: string }) {
   return <section className="nes-container is-dark with-title">{label}</section>
@@ -23,7 +24,7 @@ export function App() {
       content = <MapScreen />
       break
     case 'level':
-      content = <ScreenPlaceholder label="CodeQuest — level (W4 待实现)" />
+      content = <LevelScreen />
       break
     case 'badges':
       content = <ScreenPlaceholder label="CodeQuest — badges (W6 待实现)" />
