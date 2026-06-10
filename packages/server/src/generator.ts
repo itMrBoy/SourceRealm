@@ -47,8 +47,8 @@ const CourseDraftSchema = z.object({
     .max(6),
 })
 
-/** 出题阶段输出(contentHash 允许为空,由系统回填) */
-const LevelDraftSchema = z.object({
+/** 出题阶段输出(contentHash 允许为空,由系统回填)。导出供 CourseUpdater 复用。 */
+export const LevelDraftSchema = z.object({
   title: z.string().min(1),
   summary: z.string().min(1),
   tasks: z.array(TaskSchema).min(2).max(8),
@@ -145,8 +145,8 @@ ${readme.slice(0, MAX_README_CHARS)}
     return { projectName: draft.projectName, tagline: draft.tagline, chapters }
   }
 
-  /** 出题:生成单关任务,校验并回填代码引用 */
-  private async generateLevel(chapter: Chapter, outline: LevelOutline): Promise<Level> {
+  /** 出题:生成单关任务,校验并回填代码引用。public 供 CourseUpdater 复用。 */
+  async generateLevel(chapter: Chapter, outline: LevelOutline): Promise<Level> {
     const blocks: string[] = []
     for (const file of outline.files) {
       const content = await this.scanner.readFile(file).catch(() => null)
@@ -206,8 +206,8 @@ ${blocks.join('\n\n')}
     }
   }
 
-  /** 校验任务的全部代码引用真实存在,并回填 contentHash;非法返回 null */
-  private async verifyTask(task: Task): Promise<Task | null> {
+  /** 校验任务的全部代码引用真实存在,并回填 contentHash;非法返回 null。public 供 CourseUpdater 复用。 */
+  async verifyTask(task: Task): Promise<Task | null> {
     const clone: Task = structuredClone(task)
     for (const ref of taskRefs(clone)) {
       const got = await this.scanner.readRef(ref)
