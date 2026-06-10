@@ -159,19 +159,22 @@ export const useRun = create<RunState>((set, get) => ({
     if (!s.level) return
     set({ settling: true })
     const accuracy = runAccuracy(s)
-    const rating = rateLevel(accuracy, s.maxCombo, s.scoredTaskCount)
+    // 全部任务因源码变化被跳过时也要能结算:按 1 题、C 评、0 XP 记通过(后端要求 taskCount >= 1)
+    const allSkipped = s.scoredTaskCount === 0
+    const taskCount = allSkipped ? 1 : s.scoredTaskCount
+    const rating = allSkipped ? 'C' : rateLevel(accuracy, s.maxCombo, s.scoredTaskCount)
     const levelId = s.level.id
     try {
       const { progress, newBadges } = await api.submitLevel(projectId, {
         levelId,
-        result: { rating, accuracy, maxCombo: s.maxCombo, xp: s.xpEarned },
-        taskCount: s.scoredTaskCount,
+        result: { rating, accuracy, maxCombo: s.maxCombo, xp: allSkipped ? 0 : s.xpEarned },
+        taskCount,
       })
       useStore.getState().setProgress(progress)
       set({
         phase: 'settled',
         settling: false,
-        settlement: { rating, accuracy, maxCombo: s.maxCombo, xp: s.xpEarned, newBadges },
+        settlement: { rating, accuracy, maxCombo: s.maxCombo, xp: allSkipped ? 0 : s.xpEarned, newBadges },
       })
     } catch (err) {
       set({
