@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { judgeTreasureHunt, type Task } from '@code-quest/shared'
+import * as api from '../api.js'
 import { useStore } from '../store.js'
 import { useRun } from '../game/run.js'
 import { CodeBrowser, type HighlightRef } from '../components/CodeBrowser.js'
 import { TaskPanel } from '../components/TaskPanel.js'
+import { SettlementModal } from '../components/SettlementModal.js'
 
 /** 当前任务涉及的首个 ref 文件(用于自动打开代码浏览器) */
 function firstRefFile(task: Task | undefined): string | null {
@@ -22,13 +24,20 @@ export function LevelScreen(): JSX.Element {
   const levelId = useStore((s) => s.currentLevelId)
   const setScreen = useStore((s) => s.setScreen)
 
+  const setCourse = useStore((s) => s.setCourse)
+  const setProgress = useStore((s) => s.setProgress)
+  const course = useStore((s) => s.course)
+
   const level = useRun((s) => s.level)
   const freshness = useRun((s) => s.freshness)
   const taskIndex = useRun((s) => s.taskIndex)
   const phase = useRun((s) => s.phase)
   const error = useRun((s) => s.error)
+  const settlement = useRun((s) => s.settlement)
   const loadLevel = useRun((s) => s.loadLevel)
   const answer = useRun((s) => s.answer)
+  const finishLevel = useRun((s) => s.finishLevel)
+  const retryLevel = useRun((s) => s.retryLevel)
   const reset = useRun((s) => s.reset)
 
   const [activeFile, setActiveFile] = useState<string | null>(null)
@@ -54,9 +63,35 @@ export function LevelScreen(): JSX.Element {
     setHighlightRef(null)
   }, [task])
 
+  // 全部任务完成 → 自动结算(提交进度一次)
+  useEffect(() => {
+    if (phase === 'level-done' && projectId) void finishLevel(projectId)
+  }, [phase, projectId, finishLevel])
+
   const backToMap = useCallback(() => {
     setScreen('map')
   }, [setScreen])
+
+  // 结算后返回地图:刷新项目以拿到最新 course/progress
+  const settleBackToMap = useCallback(async () => {
+    if (projectId) {
+      try {
+        const { course: c, progress } = await api.getProject(projectId)
+        setCourse(c)
+        setProgress(progress)
+      } catch {
+        // 刷新失败也返回地图(进度已在结算时入 store)
+      }
+    }
+    setScreen('map')
+  }, [projectId, setCourse, setProgress, setScreen])
+
+  // 章节标题映射(供结算徽章文案使用)
+  const chapterTitles = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const ch of course?.chapters ?? []) map[ch.id] = ch.title
+    return map
+  }, [course])
 
   const exit = useCallback(() => {
     const midRun = phase === 'narrative' || phase === 'answering' || phase === 'feedback'
@@ -162,6 +197,15 @@ export function LevelScreen(): JSX.Element {
             )}
           </div>
         </div>
+      )}
+
+      {phase === 'settled' && settlement && (
+        <SettlementModal
+          settlement={settlement}
+          chapterTitles={chapterTitles}
+          onBackToMap={() => void settleBackToMap()}
+          onRetry={retryLevel}
+        />
       )}
     </div>
   )

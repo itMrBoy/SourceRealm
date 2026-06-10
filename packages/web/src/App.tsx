@@ -3,10 +3,8 @@ import { Home } from './screens/Home.js'
 import { Generating } from './screens/Generating.js'
 import { MapScreen } from './screens/MapScreen.js'
 import { LevelScreen } from './screens/LevelScreen.js'
-
-function ScreenPlaceholder({ label }: { label: string }) {
-  return <section className="nes-container is-dark with-title">{label}</section>
-}
+import { BadgesScreen } from './screens/BadgesScreen.js'
+import { CertScreen } from './screens/CertScreen.js'
 
 export function App() {
   const screen = useStore((s) => s.screen)
@@ -27,10 +25,10 @@ export function App() {
       content = <LevelScreen />
       break
     case 'badges':
-      content = <ScreenPlaceholder label="CodeQuest — badges (W6 待实现)" />
+      content = <BadgesScreen />
       break
     case 'cert':
-      content = <ScreenPlaceholder label="CodeQuest — cert (W6 待实现)" />
+      content = <CertScreen />
       break
   }
 

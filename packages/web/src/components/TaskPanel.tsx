@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Task } from '@code-quest/shared'
-import { useRun, runAccuracy } from '../game/run.js'
+import { useRun } from '../game/run.js'
 import { QuizTask } from './tasks/QuizTask.js'
 import { TreasureHuntTask } from './tasks/TreasureHuntTask.js'
 import { CallChainTask } from './tasks/CallChainTask.js'
 import { CodeFillTask } from './tasks/CodeFillTask.js'
 import { CodeTypeTask } from './tasks/CodeTypeTask.js'
+import { playClick, playCombo, playCorrect, playWrong, unlockAudio } from '../game/audio.js'
 
 interface TaskPanelProps {
   task: Task
@@ -34,10 +35,6 @@ export function TaskPanel({
   const hearts = useRun((s) => s.hearts)
   const combo = useRun((s) => s.combo)
   const lastCorrect = useRun((s) => s.lastCorrect)
-  const xpEarned = useRun((s) => s.xpEarned)
-  const maxCombo = useRun((s) => s.maxCombo)
-  const totalAnswers = useRun((s) => s.totalAnswers)
-  const wrongAnswers = useRun((s) => s.wrongAnswers)
   const startAnswering = useRun((s) => s.startAnswering)
   const nextTask = useRun((s) => s.nextTask)
   const retryTask = useRun((s) => s.retryTask)
@@ -51,6 +48,31 @@ export function TaskPanel({
       return () => clearTimeout(t)
     }
   }, [stale, phase, task.id, skipStale])
+
+  // 答题反馈音效:进入 feedback(或答错耗尽进 failed)时,按对错播放
+  const sounded = useRef(0)
+  useEffect(() => {
+    if (lastCorrect === null) {
+      sounded.current = 0
+      return
+    }
+    // 同一答案只响一次:用 totalAnswers 变化作为去重键由 run 驱动,这里以 phase 进入为触发
+    if (phase === 'feedback' || phase === 'failed') {
+      if (sounded.current === 1) return
+      sounded.current = 1
+      if (lastCorrect) {
+        playCorrect()
+        if (combo > 1) playCombo(combo)
+      } else {
+        playWrong()
+      }
+    }
+  }, [phase, lastCorrect, combo])
+
+  const click = () => {
+    unlockAudio()
+    playClick()
+  }
 
   return (
     <div className="tp">
@@ -67,7 +89,14 @@ export function TaskPanel({
       {stale ? (
         <StaleCard />
       ) : phase === 'narrative' ? (
-        <Narrative key={task.id} text={task.narrative} onContinue={startAnswering} />
+        <Narrative
+          key={task.id}
+          text={task.narrative}
+          onContinue={() => {
+            click()
+            startAnswering()
+          }}
+        />
       ) : phase === 'answering' ? (
         <Answering
           task={task}
@@ -80,17 +109,25 @@ export function TaskPanel({
           task={task}
           correct={lastCorrect === true}
           hearts={hearts}
-          onNext={nextTask}
-          onRetry={retryTask}
+          onNext={() => {
+            click()
+            nextTask()
+          }}
+          onRetry={() => {
+            click()
+            retryTask()
+          }}
         />
       ) : phase === 'failed' ? (
-        <Failed onRetryLevel={retryLevel} onBackToMap={onBackToMap} />
-      ) : phase === 'level-done' ? (
-        <LevelDone
-          xp={xpEarned}
-          maxCombo={maxCombo}
-          accuracy={runAccuracy({ totalAnswers, wrongAnswers })}
-          onBackToMap={onBackToMap}
+        <Failed
+          onRetryLevel={() => {
+            click()
+            retryLevel()
+          }}
+          onBackToMap={() => {
+            click()
+            onBackToMap()
+          }}
         />
       ) : null}
     </div>
@@ -237,28 +274,3 @@ function Failed({
   )
 }
 
-function LevelDone({
-  xp,
-  maxCombo,
-  accuracy,
-  onBackToMap,
-}: {
-  xp: number
-  maxCombo: number
-  accuracy: number
-  onBackToMap: () => void
-}): JSX.Element {
-  return (
-    <div className="nes-container is-dark is-rounded tp-done">
-      <p className="tp-done-head">🎉 本关完成!</p>
-      <ul className="tp-done-stats">
-        <li>获得 XP:{xp}</li>
-        <li>最高连击:x{maxCombo}</li>
-        <li>正确率:{Math.round(accuracy * 100)}%</li>
-      </ul>
-      <button type="button" className="nes-btn is-primary" onClick={onBackToMap}>
-        返回地图
-      </button>
-    </div>
-  )
-}
