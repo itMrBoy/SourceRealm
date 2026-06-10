@@ -258,3 +258,267 @@ body {
   flex-wrap: wrap;
   margin-top: 8px;
 }
+
+/* ---------- HUD(顶栏数值) ---------- */
+.hud {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  background-color: var(--cq-bg-alt);
+  border-bottom: 4px solid var(--cq-gold-dim);
+  flex-wrap: wrap;
+}
+
+.hud-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hud-title {
+  color: var(--cq-gold);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.hud-xp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-xp-bar {
+  width: 140px;
+  height: 14px;
+  background-color: #000;
+  border: 2px solid var(--cq-gold-dim);
+  overflow: hidden;
+}
+
+.hud-xp-fill {
+  height: 100%;
+  background-color: var(--cq-accent);
+  transition: width 0.3s steps(8);
+}
+
+.hud-xp-text {
+  font-size: 10px;
+  color: var(--cq-text);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.hud-center {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+.hud-project {
+  color: var(--cq-text);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hud-btn {
+  font-size: 10px;
+  padding: 4px 8px;
+}
+
+/* ---------- Map(闯关地图) ---------- */
+.map {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cq-accent);
+}
+
+.map-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 24px 16px 40px;
+}
+
+.map-track {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+  min-height: 320px;
+}
+
+.map-chapter {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 280px;
+  padding: 16px;
+  border: 4px solid;
+  border-radius: 4px;
+}
+
+/* 4 色复古配色循环 */
+.map-chapter--c0 {
+  border-color: var(--cq-gold);
+  background-color: rgba(255, 215, 0, 0.08);
+}
+.map-chapter--c1 {
+  border-color: var(--cq-accent);
+  background-color: rgba(74, 214, 200, 0.08);
+}
+.map-chapter--c2 {
+  border-color: #a06bff;
+  background-color: rgba(160, 107, 255, 0.08);
+}
+.map-chapter--c3 {
+  border-color: var(--cq-danger);
+  background-color: rgba(232, 74, 95, 0.08);
+}
+
+.map-chapter-head {
+  max-width: 360px;
+}
+
+.map-chapter-title {
+  color: var(--cq-gold);
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.map-chapter-intro {
+  font-size: 10px;
+  line-height: 1.7;
+  opacity: 0.8;
+  margin: 0;
+}
+
+/* 蜿蜒排布:节点交错上下偏移 */
+.map-nodes {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.map-node-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 96px;
+}
+
+.map-node-wrap:nth-child(even) {
+  margin-top: 36px;
+}
+
+.map-node-wrap:nth-child(odd) {
+  margin-bottom: 36px;
+}
+
+.map-node {
+  width: 56px;
+  height: 56px;
+  border: 4px solid var(--cq-gold-dim);
+  border-radius: 4px;
+  background-color: var(--cq-bg-alt);
+  color: var(--cq-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 20px;
+  position: relative;
+}
+
+.map-node:disabled {
+  cursor: not-allowed;
+}
+
+.node-icon {
+  line-height: 1;
+}
+
+.node-rating {
+  font-size: 10px;
+  color: var(--cq-gold);
+}
+
+.node-done {
+  border-color: var(--cq-gold);
+  background-color: rgba(255, 215, 0, 0.15);
+  color: var(--cq-gold);
+}
+
+.node-current {
+  border-color: var(--cq-accent);
+  background-color: rgba(74, 214, 200, 0.2);
+  color: var(--cq-accent);
+  box-shadow: 0 0 0 2px var(--cq-accent);
+}
+
+.node-locked {
+  border-color: #444;
+  color: #666;
+  opacity: 0.6;
+}
+
+.node-failed {
+  border-color: var(--cq-danger);
+  background-color: rgba(232, 74, 95, 0.15);
+  color: var(--cq-danger);
+}
+
+.node-order {
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+.node-label {
+  font-size: 9px;
+  line-height: 1.4;
+  text-align: center;
+  opacity: 0.85;
+  word-break: break-word;
+}
+
+.node-label--current {
+  color: var(--cq-accent);
+  opacity: 1;
+}
+
+.map-cert-zone {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 16px;
+}
+
+.map-cert-btn {
+  font-size: 12px;
+}
