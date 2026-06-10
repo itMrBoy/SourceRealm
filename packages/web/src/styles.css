@@ -1,0 +1,84 @@
+@import 'nes.css/css/nes.min.css';
+
+:root {
+  /* 复古像素调色板 */
+  --cq-bg: #0f0f23;
+  --cq-bg-alt: #1a1a3a;
+  --cq-gold: #ffd700;
+  --cq-gold-dim: #b8860b;
+  --cq-text: #e8e8f0;
+  --cq-accent: #4ad6c8;
+  --cq-danger: #e84a5f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--cq-bg);
+  color: var(--cq-text);
+  font-family: 'Press Start 2P', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+}
+
+/* 代码浏览器例外:使用现代等宽字体 */
+.code-font {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* CRT 扫描线滤镜(可开关) */
+.crt::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.18) 3px,
+    rgba(0, 0, 0, 0.18) 3px
+  );
+}
+
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.blink {
+  animation: blink 1s step-start infinite;
+}
+
+.float {
+  animation: float 2s ease-in-out infinite;
+}
