@@ -1,4 +1,8 @@
+import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import cors from '@fastify/cors'
+import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import {
@@ -15,6 +19,16 @@ import { ProjectStore, projectIdFor } from './store.js'
 export interface AppOptions {
   /** 测试注入;缺省时首次导入懒探测 claude CLI / API key */
   provider?: LLMProvider
+  /**
+   * web 构建产物目录;缺省自动探测 packages/web/dist。
+   * 传 null 可显式关闭静态托管(测试用)。
+   */
+  webDist?: string | null
+}
+
+/** 自动探测 packages/web/dist(相对 packages/server/src/app.ts) */
+function defaultWebDist(): string {
+  return path.resolve(fileURLToPath(import.meta.url), '../../../web/dist')
 }
 
 const ImportBodySchema = z.object({ path: z.string().min(1) })
@@ -27,6 +41,8 @@ const FileReadBodySchema = z.object({ file: z.string().min(1) })
 
 export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
+  // 本地工具,放开 CORS 以便 vite dev(不同源)直接访问 API
+  await app.register(cors, { origin: true })
   let provider = opts.provider ?? null
   /** projectId → 运行中的生成器(SSE 订阅 + 防重复启动) */
   const generators = new Map<string, LevelGenerator>()
@@ -207,6 +223,18 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
     }
     return { progress }
   })
+
+  // 生产托管:存在 web 构建产物时,静态托管 + SPA 回退(非 /api 路由回 index.html)
+  const distPath = opts.webDist === undefined ? defaultWebDist() : opts.webDist
+  if (distPath && fs.existsSync(path.join(distPath, 'index.html'))) {
+    await app.register(fastifyStatic, { root: distPath })
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === 'GET' && !req.url.startsWith('/api')) {
+        return reply.sendFile('index.html')
+      }
+      return reply.code(404).send({ error: '未找到' })
+    })
+  }
 
   return app
 }
