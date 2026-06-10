@@ -588,9 +588,10 @@ body {
 
 /* ---------- Level(关卡页) ---------- */
 .level {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .level-bar {
@@ -744,7 +745,9 @@ body {
 }
 
 .cb-code {
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
   background-color: #0d1117;
   font-size: 12px;
   line-height: 1.55;
@@ -762,13 +765,11 @@ body {
 
 .cb-lines {
   padding: 8px 0;
-  min-width: max-content;
 }
 
 .cb-line {
   display: flex;
   align-items: flex-start;
-  white-space: pre;
 }
 
 .cb-line--clickable {
@@ -790,6 +791,9 @@ body {
 
 .cb-lc {
   flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .line-highlight {
