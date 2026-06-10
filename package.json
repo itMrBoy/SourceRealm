@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "workspaces": ["packages/*"],
+  "engines": { "node": ">=18.19.0" },
   "scripts": {
     "test": "vitest run",
     "dev": "npm run dev -w @code-quest/server"
