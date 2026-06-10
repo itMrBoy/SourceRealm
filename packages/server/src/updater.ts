@@ -98,6 +98,37 @@ export function analyzeImpact(levelFiles: Map<string, string[]>, diff: RepoDiff)
   }
 }
 
+export interface CheckResult {
+  changed: boolean
+  anchor: string | null
+  head: string | null
+  summary?: { modified: number; deleted: number; added: number }
+}
+
+/**
+ * 检测自 anchorCommit 以来是否有需要处理的变更。
+ * 独立函数:只需 store + scanner,不依赖 LLM provider(check 不出题)。
+ */
+export async function checkForUpdates(
+  store: ProjectStore,
+  scanner: RepoScanner,
+): Promise<CheckResult> {
+  const meta = await store.readMeta()
+  const anchor = meta?.anchorCommit ?? null
+  const head = await scanner.head()
+  if (!anchor || !head || anchor === head) {
+    return { changed: false, anchor, head }
+  }
+  const diff = await diffSince(scanner, anchor)
+  const summary = {
+    modified: diff.modified.length,
+    deleted: diff.deleted.length,
+    added: diff.added.length,
+  }
+  const changed = summary.modified > 0 || summary.deleted > 0 || summary.added > 0
+  return { changed, anchor, head, summary }
+}
+
 // ─── CourseUpdater(增量更新管线)────────────────────────────────────────────
 
 export type UpdateEvent =
@@ -153,27 +184,9 @@ export class CourseUpdater extends EventEmitter {
     this.emit('event', e)
   }
 
-  /** 检测自 anchorCommit 以来是否有需要处理的变更 */
-  async check(): Promise<{
-    changed: boolean
-    anchor: string | null
-    head: string | null
-    summary?: { modified: number; deleted: number; added: number }
-  }> {
-    const meta = await this.store.readMeta()
-    const anchor = meta?.anchorCommit ?? null
-    const head = await this.scanner.head()
-    if (!anchor || !head || anchor === head) {
-      return { changed: false, anchor, head }
-    }
-    const diff = await diffSince(this.scanner, anchor)
-    const summary = {
-      modified: diff.modified.length,
-      deleted: diff.deleted.length,
-      added: diff.added.length,
-    }
-    const changed = summary.modified > 0 || summary.deleted > 0 || summary.added > 0
-    return { changed, anchor, head, summary }
+  /** 检测自 anchorCommit 以来是否有需要处理的变更(委托独立函数,保留方法以兼容) */
+  async check(): Promise<CheckResult> {
+    return checkForUpdates(this.store, this.scanner)
   }
 
   async run(): Promise<void> {

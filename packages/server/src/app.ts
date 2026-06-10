@@ -11,10 +11,12 @@ import {
   emptyProgress,
   type Progress,
 } from '@code-quest/shared'
+import type { EventEmitter } from 'node:events'
 import { LevelGenerator, taskRefs, type GenEvent } from './generator.js'
 import { detectProvider, type LLMProvider } from './providers.js'
 import { RepoScanner } from './scanner.js'
 import { ProjectStore, projectIdFor } from './store.js'
+import { CourseUpdater, checkForUpdates, type UpdateEvent } from './updater.js'
 
 export interface AppOptions {
   /** 测试注入;缺省时首次导入懒探测 claude CLI / API key */
@@ -44,8 +46,12 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
   // 本地工具,放开 CORS 以便 vite dev(不同源)直接访问 API
   await app.register(cors, { origin: true })
   let provider = opts.provider ?? null
-  /** projectId → 运行中的生成器(SSE 订阅 + 防重复启动) */
-  const generators = new Map<string, LevelGenerator>()
+  /**
+   * projectId → 运行中的生成器/更新器(SSE 订阅 + 防重复启动)。
+   * LevelGenerator 与 CourseUpdater 都是 EventEmitter 且 emit 'event',接口统一。
+   */
+  type Runnable = EventEmitter & { run(): Promise<void> }
+  const generators = new Map<string, Runnable>()
 
   async function getProvider(): Promise<LLMProvider> {
     if (!provider) provider = await detectProvider()
@@ -122,6 +128,34 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
     return { ok: true }
   })
 
+  // 增量更新检测:仓库自锚点以来是否有变更(不调用 LLM)
+  app.get<{ Params: { id: string } }>('/api/projects/:id/update-check', async (req, reply) => {
+    const store = new ProjectStore(req.params.id)
+    const meta = await store.readMeta()
+    if (!meta) return reply.code(404).send({ error: '项目不存在' })
+    if (!meta.isGit || !meta.anchorCommit) return { changed: false, reason: 'not-git' }
+    const scanner = await RepoScanner.open(meta.path)
+    return checkForUpdates(store, scanner)
+  })
+
+  // 启动增量更新(同 generators Map 防重复;SSE 复用 /events)
+  app.post<{ Params: { id: string } }>('/api/projects/:id/update', async (req, reply) => {
+    const store = new ProjectStore(req.params.id)
+    const meta = await store.readMeta()
+    if (!meta) return reply.code(404).send({ error: '项目不存在' })
+    if (!meta.isGit || !meta.anchorCommit) {
+      return reply.code(400).send({ error: '非 git 仓库,无法增量更新' })
+    }
+    if (generators.has(store.id)) return { ok: true }
+    const scanner = await RepoScanner.open(meta.path)
+    const llm = await getProvider()
+    if (generators.has(store.id)) return { ok: true }
+    const updater = new CourseUpdater(store, scanner, llm)
+    generators.set(store.id, updater)
+    void updater.run().finally(() => generators.delete(store.id))
+    return { ok: true }
+  })
+
   // 生成进度 SSE
   app.get<{ Params: { id: string } }>('/api/projects/:id/events', async (req, reply) => {
     reply.raw.writeHead(200, {
@@ -139,7 +173,7 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
       gen.off('event', onEvent)
       reply.raw.end()
     }
-    const onEvent = (e: GenEvent) => {
+    const onEvent = (e: GenEvent | UpdateEvent) => {
       reply.raw.write(`data: ${JSON.stringify(e)}\n\n`)
       if (e.type === 'done' || e.type === 'error') close()
     }
