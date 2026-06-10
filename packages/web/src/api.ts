@@ -45,6 +45,20 @@ export async function regenerate(id: string): Promise<void> {
   await request(`/projects/${id}/generate`, { method: 'POST' })
 }
 
+export async function updateCheck(id: string): Promise<{
+  changed: boolean
+  reason?: string
+  anchor?: string | null
+  head?: string | null
+  summary?: { modified: number; deleted: number; added: number }
+}> {
+  return request(`/projects/${id}/update-check`)
+}
+
+export async function runUpdate(id: string): Promise<void> {
+  await request(`/projects/${id}/update`, { method: 'POST' })
+}
+
 export async function getLevel(
   id: string,
   levelId: string,

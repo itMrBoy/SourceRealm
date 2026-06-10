@@ -13,8 +13,10 @@ interface GameState {
   tree: string[] | null
   muted: boolean
   crt: boolean
+  updateBaseline: string | null
 
   setScreen: (screen: Screen) => void
+  setUpdateBaseline: (anchor: string | null) => void
   setProject: (id: string, name: string) => void
   setCourse: (course: Course | null) => void
   setProgress: (progress: Progress) => void
@@ -34,8 +36,10 @@ export const useStore = create<GameState>((set) => ({
   tree: null,
   muted: false,
   crt: true,
+  updateBaseline: null,
 
   setScreen: (screen) => set({ screen }),
+  setUpdateBaseline: (anchor) => set({ updateBaseline: anchor }),
   setProject: (id, name) => set({ projectId: id, projectName: name, tree: null }),
   setCourse: (course) => set({ course }),
   setProgress: (progress) => set({ progress }),

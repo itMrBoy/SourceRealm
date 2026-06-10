@@ -20,9 +20,13 @@ export function Generating(): JSX.Element {
   const setScreen = useStore((s) => s.setScreen)
   const setCourse = useStore((s) => s.setCourse)
   const setProgress = useStore((s) => s.setProgress)
+  const updateBaseline = useStore((s) => s.updateBaseline)
+  const setUpdateBaseline = useStore((s) => s.setUpdateBaseline)
 
   const [course, setLocalCourse] = useState<Course | null>(null)
   const [status, setStatus] = useState<GenStatus>('idle')
+  // 最近一次拉取到的锚点:更新流程下用于区分「更新前的旧 done」与「更新已完成」
+  const [anchorCommit, setAnchorCommit] = useState<string | null>(null)
   const [genError, setGenError] = useState<string | null>(null)
   const [failed, setFailed] = useState<Record<string, string>>({})
   const [retrying, setRetrying] = useState(false)
@@ -39,6 +43,7 @@ export function Generating(): JSX.Element {
       latest.current = { course: c, progress }
       setLocalCourse(c)
       setStatus(meta.generation.status)
+      setAnchorCommit(meta.anchorCommit)
       if (meta.generation.error) setGenError(meta.generation.error)
     } catch {
       // 单次拉取失败忽略,等下一次轮询/事件
@@ -96,8 +101,15 @@ export function Generating(): JSX.Element {
       setCourse(snap.course)
       setProgress(snap.progress)
     }
+    setUpdateBaseline(null)
     setScreen('map')
-  }, [setCourse, setProgress, setScreen])
+  }, [setCourse, setProgress, setScreen, setUpdateBaseline])
+
+  // 更新流程下:POST /update 后 status 短暂仍为旧的 'done'(异步 updater 尚未翻到
+  // 'generating'),且锚点未前进。仅当非更新流程(updateBaseline===null)或锚点已前进
+  // (anchorCommit!==updateBaseline)时,才视 'done' 为真正完成,避免在旧 done 上误跳转。
+  const reallyDone =
+    status === 'done' && (updateBaseline === null || anchorCommit !== updateBaseline)
 
   // 完成且无失败关卡时自动进入地图;有失败关卡则停留让玩家选择
   const failedLevelIds = course
@@ -105,10 +117,10 @@ export function Generating(): JSX.Element {
     : []
 
   useEffect(() => {
-    if (status === 'done' && failedLevelIds.length === 0) {
+    if (reallyDone && failedLevelIds.length === 0) {
       proceed()
     }
-  }, [status, failedLevelIds.length, proceed])
+  }, [reallyDone, failedLevelIds.length, proceed])
 
   async function retry(): Promise<void> {
     if (!projectId || retrying) return
@@ -129,7 +141,7 @@ export function Generating(): JSX.Element {
   return (
     <main className="gen">
       <div className="gen-hero">
-        <h1 className="gen-title blink">世界生成中…</h1>
+        <h1 className="gen-title blink">{updateBaseline !== null ? '世界更新中…' : '世界生成中…'}</h1>
         <p className="gen-subtitle">{projectName || '未知项目'}</p>
       </div>
 
@@ -177,7 +189,7 @@ export function Generating(): JSX.Element {
         </section>
       )}
 
-      {status === 'done' && failedLevelIds.length > 0 && (
+      {reallyDone && failedLevelIds.length > 0 && (
         <section className="nes-container is-rounded is-warning gen-done-actions">
           <p>
             有 {failedLevelIds.length} 个关卡生成失败,可继续进入地图(失败关卡显示为 ⚠),或重试它们。
