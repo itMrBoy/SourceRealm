@@ -1,4 +1,6 @@
 import { useStore } from './store.js'
+import { Home } from './screens/Home.js'
+import { Generating } from './screens/Generating.js'
 
 function ScreenPlaceholder({ label }: { label: string }) {
   return <section className="nes-container is-dark with-title">{label}</section>
@@ -11,10 +13,10 @@ export function App() {
   let content: JSX.Element
   switch (screen) {
     case 'home':
-      content = <ScreenPlaceholder label="CodeQuest — home (W2 待实现)" />
+      content = <Home />
       break
     case 'generating':
-      content = <ScreenPlaceholder label="CodeQuest — generating (W2 待实现)" />
+      content = <Generating />
       break
     case 'map':
       content = <ScreenPlaceholder label="CodeQuest — map (W3 待实现)" />

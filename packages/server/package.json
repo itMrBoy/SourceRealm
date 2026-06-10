@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/cli.ts",
+    "dev-mock": "tsx scripts/dev-mock.ts",
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {

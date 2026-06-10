@@ -82,3 +82,179 @@ body {
 .float {
   animation: float 2s ease-in-out infinite;
 }
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---------- Home(导入向导) ---------- */
+.home,
+.gen {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.home-hero {
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.home-title {
+  color: var(--cq-gold);
+  font-size: 36px;
+  margin: 0;
+  text-shadow: 4px 4px 0 var(--cq-gold-dim);
+}
+
+.home-subtitle {
+  color: var(--cq-accent);
+  margin: 12px 0 0;
+}
+
+.home-hint {
+  color: var(--cq-text);
+  opacity: 0.8;
+}
+
+.home-field {
+  margin: 12px 0;
+}
+
+.home-new .nes-input {
+  color: #212529;
+}
+
+.home-error {
+  margin-top: 16px;
+}
+
+.home-project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-project-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-project-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-project-badge {
+  flex-shrink: 0;
+}
+
+/* ---------- Generating(生成进度) ---------- */
+.gen-hero {
+  text-align: center;
+}
+
+.gen-title {
+  color: var(--cq-gold);
+  font-size: 24px;
+  margin: 0;
+}
+
+.gen-subtitle {
+  color: var(--cq-accent);
+  margin: 8px 0 0;
+}
+
+.gen-tagline {
+  color: var(--cq-text);
+  opacity: 0.8;
+  margin: 0 0 16px;
+}
+
+.gen-error-msg {
+  color: var(--cq-danger);
+  word-break: break-word;
+}
+
+.gen-chapters {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.gen-chapter-title {
+  color: var(--cq-gold);
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.gen-level-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gen-level {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gen-level-icon {
+  width: 16px;
+  text-align: center;
+}
+
+.gen-level--pending {
+  color: #888;
+}
+
+.gen-level--generating {
+  color: var(--cq-accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.gen-level--ready {
+  color: var(--cq-gold);
+}
+
+.gen-level--failed {
+  color: var(--cq-danger);
+}
+
+.gen-level-note {
+  color: var(--cq-danger);
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.gen-done-actions p {
+  color: #212529;
+}
+
+.gen-actions-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
