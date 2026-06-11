@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { judgeTreasureHunt, type Task } from '@code-quest/shared'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
@@ -6,6 +6,7 @@ import { useRun } from '../game/run.js'
 import { CodeBrowser, type HighlightRef } from '../components/CodeBrowser.js'
 import { TaskPanel } from '../components/TaskPanel.js'
 import { SettlementModal } from '../components/SettlementModal.js'
+import { SplitHandle } from '../components/SplitHandle.js'
 
 /** 当前任务涉及的首个 ref 文件(用于自动打开代码浏览器) */
 function firstRefFile(task: Task | undefined): string | null {
@@ -44,6 +45,26 @@ export function LevelScreen(): JSX.Element {
   const [highlightRef, setHighlightRef] = useState<HighlightRef | null>(null)
   // 寻宝任务当前题答错次数(每题重置)
   const [treasureWrong, setTreasureWrong] = useState(0)
+
+  // 三栏宽度:文件栏(px)与左侧整体占比(%),可拖拽调整
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [railWidth, setRailWidth] = useState(180)
+  const [leftPercent, setLeftPercent] = useState(55)
+
+  const onDragRail = useCallback((clientX: number) => {
+    const grid = gridRef.current
+    if (!grid) return
+    const x = clientX - grid.getBoundingClientRect().left
+    setRailWidth(Math.min(Math.max(x, 120), 400))
+  }, [])
+
+  const onDragMain = useCallback((clientX: number) => {
+    const grid = gridRef.current
+    if (!grid) return
+    const rect = grid.getBoundingClientRect()
+    const pct = ((clientX - rect.left) / rect.width) * 100
+    setLeftPercent(Math.min(Math.max(pct, 25), 80))
+  }, [])
 
   // 挂载:加载关卡
   useEffect(() => {
@@ -171,7 +192,11 @@ export function LevelScreen(): JSX.Element {
       )}
 
       {level && phase !== 'loading' && !(phase === 'failed' && error) && (
-        <div className="level-grid">
+        <div
+          className="level-grid"
+          ref={gridRef}
+          style={{ gridTemplateColumns: `${leftPercent}% 6px 1fr` }}
+        >
           <div className="level-left">
             <CodeBrowser
               projectId={projectId}
@@ -180,8 +205,11 @@ export function LevelScreen(): JSX.Element {
               onSelectFile={setActiveFile}
               onLineClick={lineClickHandler}
               highlightRef={highlightRef}
+              railWidth={railWidth}
+              onDragRail={onDragRail}
             />
           </div>
+          <SplitHandle onDrag={onDragMain} />
           <div className="level-right">
             {task && (
               <TaskPanel

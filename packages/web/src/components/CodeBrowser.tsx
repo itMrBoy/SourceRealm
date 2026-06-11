@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { codeToHtml } from 'shiki'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
+import { SplitHandle } from './SplitHandle.js'
 
 export interface HighlightRef {
   file: string
@@ -19,6 +20,10 @@ interface CodeBrowserProps {
   activeFile?: string | null
   /** 受控模式下,用户在文件栏选择文件时回调 */
   onSelectFile?: (file: string) => void
+  /** 文件栏宽度(px),可拖拽时由父组件受控 */
+  railWidth?: number
+  /** 文件栏分隔条拖动回调(clientX) */
+  onDragRail?: (clientX: number) => void
 }
 
 const EXT_LANG: Record<string, string> = {
@@ -83,6 +88,8 @@ export function CodeBrowser({
   highlightRef,
   activeFile,
   onSelectFile,
+  railWidth,
+  onDragRail,
 }: CodeBrowserProps): JSX.Element {
   const setProgress = useStore((s) => s.setProgress)
 
@@ -191,7 +198,14 @@ export function CodeBrowser({
     line <= highlightRef.endLine
 
   return (
-    <div className="cb">
+    <div
+      className="cb"
+      style={
+        onDragRail
+          ? { gridTemplateColumns: `${railWidth ?? 180}px 6px 1fr` }
+          : undefined
+      }
+    >
       <aside className="cb-rail">
         <p className="cb-rail-title">本关文件</p>
         <ul className="cb-file-list">
@@ -239,6 +253,8 @@ export function CodeBrowser({
           </>
         )}
       </aside>
+
+      {onDragRail && <SplitHandle onDrag={onDragRail} />}
 
       <div className="cb-code code-font" ref={codeAreaRef}>
         {!currentFile && <p className="cb-placeholder">选择左侧文件查看源码</p>}
