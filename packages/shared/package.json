@@ -1,5 +1,5 @@
 {
-  "name": "@code-quest/shared",
+  "name": "@sourcerealm/shared",
   "version": "0.1.0",
   "type": "module",
   "exports": { ".": "./src/index.ts" },

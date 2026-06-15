@@ -1,14 +1,14 @@
 {
-  "name": "code-quest",
+  "name": "sourcerealm",
   "private": true,
   "type": "module",
   "workspaces": ["packages/*"],
   "engines": { "node": ">=18.19.0" },
   "scripts": {
     "test": "vitest run",
-    "dev": "npm run dev -w @code-quest/server",
-    "build": "npm run build -w @code-quest/web",
-    "start": "npm run dev -w @code-quest/server"
+    "dev": "pnpm --parallel --filter @sourcerealm/web --filter @sourcerealm/server dev",
+    "build": "pnpm --filter @sourcerealm/web build",
+    "start": "pnpm --filter @sourcerealm/server dev"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

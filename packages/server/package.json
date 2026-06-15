@@ -1,15 +1,15 @@
 {
-  "name": "@code-quest/server",
+  "name": "@sourcerealm/server",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/cli.ts",
+    "dev": "tsx src/cli.ts --no-open",
     "dev-mock": "tsx scripts/dev-mock.ts",
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
-    "@code-quest/shared": "*",
+    "@sourcerealm/shared": "workspace:*",
     "@fastify/cors": "^9.0.1",
     "@fastify/static": "^7.0.4",
     "execa": "^8.0.1",

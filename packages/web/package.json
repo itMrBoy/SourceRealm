@@ -1,20 +1,24 @@
 {
-  "name": "@code-quest/web",
+  "name": "@sourcerealm/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --open",
+    "dev:hot": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@code-quest/shared": "*",
     "@dnd-kit/core": "^6.1",
     "@dnd-kit/sortable": "^8.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@sourcerealm/shared": "workspace:*",
+    "classnames": "^2.5.1",
     "nes.css": "^2.3",
+    "prop-types": "^15.8.1",
     "react": "^18.3",
+    "react-accessible-treeview": "^2.11.2",
     "react-dom": "^18.3",
     "shiki": "^1.6",
     "zustand": "^4.5"
