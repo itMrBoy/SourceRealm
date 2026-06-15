@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { judgeTreasureHunt, type Task } from '@code-quest/shared'
+import { judgeTreasureHunt, type Task } from '@sourcerealm/shared'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
 import { useRun } from '../game/run.js'

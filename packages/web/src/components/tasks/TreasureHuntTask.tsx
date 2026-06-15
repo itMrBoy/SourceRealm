@@ -1,4 +1,4 @@
-import type { Task } from '@code-quest/shared'
+import type { Task } from '@sourcerealm/shared'
 
 type TreasureHuntTask = Extract<Task, { type: 'treasure-hunt' }>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { judgeCodeFill, type Task } from '@code-quest/shared'
+import { judgeCodeFill, type Task } from '@sourcerealm/shared'
 import * as api from '../../api.js'
 import { useStore } from '../../store.js'
 

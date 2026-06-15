@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Chapter, LevelOutline } from '@code-quest/shared'
+import type { Chapter, LevelOutline } from '@sourcerealm/shared'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
 import { Hud } from '../components/Hud.js'

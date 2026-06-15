@@ -156,6 +156,15 @@ body {
   margin: 4px 0 8px;
 }
 
+.home-provider p {
+  margin: 0 0 6px;
+}
+
+.home-provider-sub {
+  color: var(--cq-accent);
+  overflow-wrap: anywhere;
+}
+
 .home-provider--missing {
   color: #e76e55;
 }
@@ -282,8 +291,8 @@ body {
   opacity: 0.9;
 }
 
-.gen-done-actions p {
-  color: #212529;
+.gen-done-actions .gen-done-message {
+  color: var(--cq-danger) !important;
 }
 
 .gen-actions-row {
@@ -425,6 +434,7 @@ body {
 
 .map-track {
   display: flex;
+  flex-wrap: wrap;
   align-items: stretch;
   gap: 24px;
   min-height: 320px;
@@ -771,15 +781,71 @@ body.col-resizing {
   padding: 4px 6px;
 }
 
-.cb-others-toggle {
-  width: 100%;
-  background: none;
-  border: none;
+.cb-rail-title--all {
   color: var(--cq-accent);
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(74, 214, 200, 0.2);
+}
+
+.cb-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cb-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cb-tree li {
+  list-style: none;
+}
+
+.cb-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 0;
+  color: var(--cq-text);
   cursor: pointer;
-  font-size: 10px;
-  text-align: left;
-  padding: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.cb-tree-node:hover {
+  background-color: rgba(74, 214, 200, 0.12);
+}
+
+.cb-tree-node--branch {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.cb-tree-node--level-file {
+  color: var(--cq-gold);
+}
+
+.cb-tree-node--active {
+  background-color: rgba(255, 215, 0, 0.16);
+  color: var(--cq-gold);
+}
+
+.cb-tree-icon {
+  width: 14px;
+  flex-shrink: 0;
+  color: currentColor;
+  opacity: 0.95;
+}
+
+.cb-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cb-code {
@@ -1526,5 +1592,51 @@ body.col-resizing {
   }
   .cb {
     grid-template-columns: 120px 1fr;
+  }
+}
+
+/* ---------- Toast(全局浮层提示) ---------- */
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9000; /* 低于 CRT 滤镜的 9999,高于一切界面元素 */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toast-item {
+  pointer-events: auto;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  animation: toast-in 0.18s ease-out;
+}
+
+.toast-icon {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.toast-text {
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }

@@ -1,4 +1,4 @@
-import { levelInfo, type Rating } from '@code-quest/shared'
+import { levelInfo, type Rating } from '@sourcerealm/shared'
 import { useStore } from '../store.js'
 import { Hud } from '../components/Hud.js'
 import { playClick, unlockAudio } from '../game/audio.js'

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Task } from '@code-quest/shared'
+import type { Task } from '@sourcerealm/shared'
 import { useRun } from '../game/run.js'
 import { QuizTask } from './tasks/QuizTask.js'
 import { TreasureHuntTask } from './tasks/TreasureHuntTask.js'

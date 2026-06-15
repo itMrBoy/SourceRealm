@@ -1,4 +1,4 @@
-import { TITLES, levelInfo } from '@code-quest/shared'
+import { TITLES, levelInfo } from '@sourcerealm/shared'
 import { useStore } from '../store.js'
 
 export function Hud(): JSX.Element {

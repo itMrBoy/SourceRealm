@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { rateLevel, taskXp, type Level, type Rating, type TaskType } from '@code-quest/shared'
+import { rateLevel, taskXp, type Level, type Rating, type TaskType } from '@sourcerealm/shared'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
 

@@ -1,7 +1,18 @@
 import { create } from 'zustand'
-import { emptyProgress, type Course, type Progress } from '@code-quest/shared'
+import { emptyProgress, type Course, type Progress } from '@sourcerealm/shared'
 
 export type Screen = 'home' | 'generating' | 'map' | 'level' | 'badges' | 'cert'
+
+export type ToastType = 'info' | 'success' | 'warning' | 'error'
+export interface Toast {
+  id: number
+  type: ToastType
+  text: string
+}
+
+/** toast 自动消失时长(ms);error 停留更久 */
+const TOAST_TTL: Record<ToastType, number> = { info: 4000, success: 4000, warning: 6000, error: 8000 }
+let toastSeq = 0
 
 interface GameState {
   screen: Screen
@@ -14,6 +25,7 @@ interface GameState {
   muted: boolean
   crt: boolean
   updateBaseline: string | null
+  toasts: Toast[]
 
   setScreen: (screen: Screen) => void
   setUpdateBaseline: (anchor: string | null) => void
@@ -24,6 +36,8 @@ interface GameState {
   setTree: (tree: string[]) => void
   toggleMuted: () => void
   toggleCrt: () => void
+  pushToast: (type: ToastType, text: string) => void
+  dismissToast: (id: number) => void
 }
 
 export const useStore = create<GameState>((set) => ({
@@ -37,6 +51,7 @@ export const useStore = create<GameState>((set) => ({
   muted: false,
   crt: true,
   updateBaseline: null,
+  toasts: [],
 
   setScreen: (screen) => set({ screen }),
   setUpdateBaseline: (anchor) => set({ updateBaseline: anchor }),
@@ -47,4 +62,10 @@ export const useStore = create<GameState>((set) => ({
   setTree: (tree) => set({ tree }),
   toggleMuted: () => set((s) => ({ muted: !s.muted })),
   toggleCrt: () => set((s) => ({ crt: !s.crt })),
+  pushToast: (type, text) => {
+    const id = ++toastSeq
+    set((s) => ({ toasts: [...s.toasts, { id, type, text }] }))
+    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), TOAST_TTL[type])
+  },
+  dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }))

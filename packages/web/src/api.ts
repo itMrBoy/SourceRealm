@@ -1,9 +1,18 @@
-import type { Course, Level, Progress, ProjectMeta, LevelResult } from '@code-quest/shared'
+import type { Course, Level, Progress, ProjectMeta, LevelResult } from '@sourcerealm/shared'
 
-const BASE = '/api'
+const BASE = trimTrailingSlash(import.meta.env.VITE_SOURCEREALM_API_BASE ?? '/api')
+const EVENTS_BASE = trimTrailingSlash(import.meta.env.VITE_SOURCEREALM_EVENTS_BASE ?? BASE)
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '')
+}
+
+function joinUrl(base: string, path: string): string {
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(BASE + path, {
+  const res = await fetch(joinUrl(BASE, path), {
     ...init,
     headers: {
       ...(init?.body ? { 'content-type': 'application/json' } : {}),
@@ -35,7 +44,14 @@ export async function listProjects(): Promise<ProjectMeta[]> {
   return data.projects
 }
 
-export async function getProvider(): Promise<{ available: boolean; name?: string; error?: string }> {
+export async function getProvider(): Promise<{
+  mode?: 'claude-cli' | 'anthropic-api' | 'unset'
+  available: boolean
+  name?: string
+  error?: string
+  apiBaseUrl?: string
+  apiBaseUrlSource?: 'env' | 'default'
+}> {
   return request('/provider')
 }
 
@@ -104,7 +120,7 @@ export function subscribeEvents(
   id: string,
   onEvent: (e: { type: string; levelId?: string; error?: string }) => void,
 ): () => void {
-  const source = new EventSource(`${BASE}/projects/${id}/events`)
+  const source = new EventSource(joinUrl(EVENTS_BASE, `/projects/${id}/events`))
   source.onmessage = (msg) => {
     try {
       onEvent(JSON.parse(msg.data))

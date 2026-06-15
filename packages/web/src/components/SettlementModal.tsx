@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BADGE_INFO } from '@code-quest/shared'
+import { BADGE_INFO } from '@sourcerealm/shared'
 import type { Settlement } from '../game/run.js'
 import { playBadge, playLevelClear } from '../game/audio.js'
 

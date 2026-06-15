@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Course, ProjectMeta } from '@code-quest/shared'
+import type { Course, ProjectMeta } from '@sourcerealm/shared'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
 
@@ -191,7 +191,7 @@ export function Generating(): JSX.Element {
 
       {reallyDone && failedLevelIds.length > 0 && (
         <section className="nes-container is-rounded is-warning gen-done-actions">
-          <p>
+          <p className="gen-done-message">
             有 {failedLevelIds.length} 个关卡生成失败,可继续进入地图(失败关卡显示为 ⚠),或重试它们。
           </p>
           <div className="gen-actions-row">

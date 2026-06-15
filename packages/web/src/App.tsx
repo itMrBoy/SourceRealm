@@ -5,6 +5,7 @@ import { MapScreen } from './screens/MapScreen.js'
 import { LevelScreen } from './screens/LevelScreen.js'
 import { BadgesScreen } from './screens/BadgesScreen.js'
 import { CertScreen } from './screens/CertScreen.js'
+import { ToastContainer } from './components/Toast.js'
 
 export function App() {
   const screen = useStore((s) => s.screen)
@@ -32,5 +33,10 @@ export function App() {
       break
   }
 
-  return <div className={crt ? 'crt' : ''}>{content}</div>
+  return (
+    <div className={crt ? 'crt' : ''}>
+      {content}
+      <ToastContainer />
+    </div>
+  )
 }

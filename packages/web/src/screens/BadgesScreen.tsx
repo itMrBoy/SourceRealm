@@ -1,4 +1,4 @@
-import { BADGE_INFO } from '@code-quest/shared'
+import { BADGE_INFO } from '@sourcerealm/shared'
 import { useStore } from '../store.js'
 import { Hud } from '../components/Hud.js'
 import { playClick, unlockAudio } from '../game/audio.js'

@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { judgeCallChain, type Task } from '@code-quest/shared'
+import { judgeCallChain, type Task } from '@sourcerealm/shared'
 
 type CallChainTask = Extract<Task, { type: 'call-chain' }>
 

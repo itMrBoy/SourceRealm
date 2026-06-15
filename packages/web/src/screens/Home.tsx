@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ProjectMeta } from '@code-quest/shared'
+import type { ProjectMeta } from '@sourcerealm/shared'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
 
@@ -19,18 +19,38 @@ const STATUS_CLASS: Record<string, string> = {
   idle: 'is-dark',
 }
 
+type ProviderStatus = {
+  mode?: 'claude-cli' | 'anthropic-api' | 'unset'
+  available: boolean
+  name?: string
+  error?: string
+  apiBaseUrl?: string
+  apiBaseUrlSource?: 'env' | 'default'
+}
+
+function providerName(provider: ProviderStatus): string {
+  if (provider.name === 'claude-cli') return 'Claude Code CLI'
+  if (provider.name === 'anthropic-api') return 'Anthropic API'
+  return provider.name ?? (provider.mode === 'anthropic-api' ? 'Anthropic API' : provider.mode ?? '未知')
+}
+
+function isApiProvider(provider: ProviderStatus): boolean {
+  return provider.mode === 'anthropic-api' || provider.name === 'anthropic-api'
+}
+
 export function Home(): JSX.Element {
   const setScreen = useStore((s) => s.setScreen)
   const setProject = useStore((s) => s.setProject)
   const setCourse = useStore((s) => s.setCourse)
   const setProgress = useStore((s) => s.setProgress)
+  const pushToast = useStore((s) => s.pushToast)
 
   const [projects, setProjects] = useState<ProjectMeta[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [path, setPath] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [provider, setProvider] = useState<{ available: boolean; name?: string; error?: string } | null>(null)
+  const [provider, setProvider] = useState<ProviderStatus | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -48,7 +68,11 @@ export function Home(): JSX.Element {
     api
       .getProvider()
       .then((p) => {
-        if (alive) setProvider(p)
+        if (!alive) return
+        setProvider(p)
+        if (!p.available) {
+          pushToast('warning', p.error ?? '未检测到可用 AI,请先完成配置')
+        }
       })
       .catch(() => {
         /* Provider 探测失败不阻断界面 */
@@ -56,7 +80,7 @@ export function Home(): JSX.Element {
     return () => {
       alive = false
     }
-  }, [])
+  }, [pushToast])
 
   async function openExisting(meta: ProjectMeta): Promise<void> {
     setProject(meta.id, meta.name)
@@ -77,6 +101,11 @@ export function Home(): JSX.Element {
   async function startAdventure(): Promise<void> {
     const trimmed = path.trim()
     if (!trimmed || submitting) return
+    // provider 未就绪时拦截:用 toast 提示去配置,不发起导入(避免后端生成必然失败)
+    if (provider && !provider.available) {
+      pushToast('warning', provider.error ?? '请先配置 AI 引擎再开始冒险')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -84,7 +113,9 @@ export function Home(): JSX.Element {
       setProject(id, name)
       setScreen('generating')
     } catch (err) {
-      setError((err as Error).message)
+      const message = (err as Error).message
+      setError(message)
+      pushToast('error', `导入失败:${message}`)
     } finally {
       setSubmitting(false)
     }
@@ -101,11 +132,19 @@ export function Home(): JSX.Element {
         <p className="title">新游戏</p>
         <p className="home-hint">输入本地仓库路径,开启一段源码冒险。</p>
         {provider && (
-          <p className={`home-provider ${provider.available ? '' : 'home-provider--missing'}`}>
-            {provider.available
-              ? `🤖 AI 引擎:${provider.name === 'claude-cli' ? 'Claude Code CLI' : provider.name === 'anthropic-api' ? 'Anthropic API' : provider.name}`
-              : `⚠ 未检测到可用 AI:${provider.error ?? '请安装 Claude Code CLI 或设置 ANTHROPIC_API_KEY'}`}
-          </p>
+          <div className={`home-provider ${provider.available ? '' : 'home-provider--missing'}`}>
+            <p>
+              {provider.available
+                ? `🤖 AI 引擎:${providerName(provider)}`
+                : `⚠ 未检测到可用 AI:${provider.error ?? '请安装 Claude Code CLI 或设置 ANTHROPIC_API_KEY'}`}
+            </p>
+            {isApiProvider(provider) && provider.apiBaseUrl && (
+              <p className="home-provider-sub">
+                订阅/API 地址:{provider.apiBaseUrl}
+                {provider.apiBaseUrlSource === 'default' ? '（默认）' : ''}
+              </p>
+            )}
+          </div>
         )}
         <div className="nes-field home-field">
           <label htmlFor="repo-path">仓库路径</label>

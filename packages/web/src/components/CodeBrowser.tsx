@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import TreeView, { type INode, type NodeId } from 'react-accessible-treeview'
 import { codeToHtml } from 'shiki'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
@@ -58,6 +59,115 @@ const EXT_LANG: Record<string, string> = {
   sql: 'sql',
 }
 
+type FileTreeKind = 'root' | 'directory' | 'file'
+
+interface FileTreeMeta {
+  kind: FileTreeKind
+  path: string
+}
+
+interface BuiltFileTree {
+  data: Array<INode<FileTreeMeta>>
+  fileToId: Map<string, NodeId>
+  parentIdsByFile: Map<string, NodeId[]>
+}
+
+const ROOT_ID = '__root__'
+
+function normalizeRepoPath(file: string): string {
+  return file.replace(/\\/g, '/').replace(/^\/+/, '')
+}
+
+function dirId(path: string): string {
+  return `dir:${path}`
+}
+
+function fileId(path: string): string {
+  return `file:${path}`
+}
+
+function sortTreeChildren(nodes: Array<INode<FileTreeMeta>>): void {
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  for (const node of nodes) {
+    node.children.sort((a, b) => {
+      const left = byId.get(a)
+      const right = byId.get(b)
+      if (!left || !right) return String(a).localeCompare(String(b))
+      if (left.metadata?.kind !== right.metadata?.kind) {
+        return left.metadata?.kind === 'directory' ? -1 : 1
+      }
+      return left.name.localeCompare(right.name)
+    })
+  }
+}
+
+function buildFileTree(files: string[]): BuiltFileTree {
+  const nodes = new Map<NodeId, INode<FileTreeMeta>>()
+  const fileToId = new Map<string, NodeId>()
+  const parentIdsByFile = new Map<string, NodeId[]>()
+
+  nodes.set(ROOT_ID, {
+    id: ROOT_ID,
+    name: '',
+    parent: null,
+    children: [],
+    metadata: { kind: 'root', path: '' },
+  })
+
+  const ensureDirectory = (path: string, parent: NodeId, name: string): NodeId => {
+    const id = dirId(path)
+    if (!nodes.has(id)) {
+      nodes.set(id, {
+        id,
+        name,
+        parent,
+        children: [],
+        metadata: { kind: 'directory', path },
+      })
+      nodes.get(parent)?.children.push(id)
+    }
+    return id
+  }
+
+  for (const rawFile of files) {
+    const file = normalizeRepoPath(rawFile)
+    if (!file) continue
+
+    const parts = file.split('/').filter(Boolean)
+    let parent: NodeId = ROOT_ID
+    let currentPath = ''
+    const parentIds: NodeId[] = []
+
+    for (const part of parts.slice(0, -1)) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part
+      parent = ensureDirectory(currentPath, parent, part)
+      parentIds.push(parent)
+    }
+
+    const id = fileId(file)
+    if (!nodes.has(id)) {
+      nodes.set(id, {
+        id,
+        name: parts[parts.length - 1] ?? file,
+        parent,
+        children: [],
+        metadata: { kind: 'file', path: file },
+      })
+      nodes.get(parent)?.children.push(id)
+    }
+    fileToId.set(file, id)
+    parentIdsByFile.set(file, parentIds)
+  }
+
+  const data = Array.from(nodes.values())
+  sortTreeChildren(data)
+  return { data, fileToId, parentIdsByFile }
+}
+
+function escapeFileSelector(value: string): string {
+  return window.CSS?.escape(value) ?? value.replace(/["\\]/g, '\\$&')
+}
+
 function langOf(file: string): string {
   const ext = file.split('.').pop()?.toLowerCase() ?? ''
   return EXT_LANG[ext] ?? 'txt'
@@ -102,15 +212,24 @@ export function CodeBrowser({
   const [lines, setLines] = useState<string[]>([])
   const [loadingCode, setLoadingCode] = useState(false)
   const [codeError, setCodeError] = useState<string | null>(null)
-  const [showOthers, setShowOthers] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<NodeId[]>([])
 
   const levelFiles = useMemo(() => files.filter(Boolean), [files])
-  const otherFiles = useMemo(
-    () => (treeFiles ?? []).filter((f) => !levelFiles.includes(f)),
-    [treeFiles, levelFiles],
+  const levelFileSet = useMemo(
+    () => new Set(levelFiles.map(normalizeRepoPath)),
+    [levelFiles],
   )
+  const allFiles = useMemo(
+    () => (treeFiles ?? []).map(normalizeRepoPath).filter(Boolean),
+    [treeFiles],
+  )
+  const fileTree = useMemo(() => buildFileTree(allFiles), [allFiles])
+  const selectedTreeId = currentFile
+    ? fileTree.fileToId.get(normalizeRepoPath(currentFile))
+    : undefined
 
   const codeAreaRef = useRef<HTMLDivElement>(null)
+  const railRef = useRef<HTMLElement>(null)
 
   // 拉取整个文件树(用于「其他文件」)
   useEffect(() => {
@@ -191,11 +310,35 @@ export function CodeBrowser({
     else onSelectFile?.(file)
   }
 
+  function revealInTree(file: string): void {
+    const normalized = normalizeRepoPath(file)
+    const parentIds = fileTree.parentIdsByFile.get(normalized) ?? []
+    if (parentIds.length > 0) {
+      setExpandedIds((prev) => Array.from(new Set([...prev, ...parentIds])))
+    }
+    window.requestAnimationFrame(() => {
+      const selector = `[data-tree-file="${escapeFileSelector(normalized)}"]`
+      railRef.current?.querySelector<HTMLElement>(selector)?.scrollIntoView({
+        block: 'nearest',
+      })
+    })
+  }
+
+  function selectFile(file: string): void {
+    openFile(file)
+    revealInTree(file)
+  }
+
   const inHighlight = (line: number): boolean =>
     !!highlightRef &&
     highlightRef.file === currentFile &&
     line >= highlightRef.startLine &&
     line <= highlightRef.endLine
+
+  useEffect(() => {
+    if (currentFile) revealInTree(currentFile)
+    // fileTree changes when the async full repo tree arrives; keep the current file visible then.
+  }, [currentFile, fileTree])
 
   return (
     <div
@@ -206,7 +349,7 @@ export function CodeBrowser({
           : undefined
       }
     >
-      <aside className="cb-rail">
+      <aside className="cb-rail" ref={railRef}>
         <p className="cb-rail-title">本关文件</p>
         <ul className="cb-file-list">
           {levelFiles.map((f) => (
@@ -214,7 +357,7 @@ export function CodeBrowser({
               <button
                 type="button"
                 className={`cb-file ${f === currentFile ? 'cb-file--active' : ''}`}
-                onClick={() => openFile(f)}
+                onClick={() => selectFile(f)}
                 title={f}
               >
                 <span className="cb-file-star">★</span>
@@ -225,32 +368,62 @@ export function CodeBrowser({
           {levelFiles.length === 0 && <li className="cb-file-empty">(无)</li>}
         </ul>
 
-        {otherFiles.length > 0 && (
-          <>
-            <button
-              type="button"
-              className="cb-others-toggle"
-              onClick={() => setShowOthers((v) => !v)}
-            >
-              {showOthers ? '▾' : '▸'} 其他文件 ({otherFiles.length})
-            </button>
-            {showOthers && (
-              <ul className="cb-file-list">
-                {otherFiles.map((f) => (
-                  <li key={f}>
-                    <button
-                      type="button"
-                      className={`cb-file ${f === currentFile ? 'cb-file--active' : ''}`}
-                      onClick={() => openFile(f)}
-                      title={f}
-                    >
-                      <span className="cb-file-name">{f}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+        <p className="cb-rail-title cb-rail-title--all">全部文件 ({allFiles.length})</p>
+        {allFiles.length === 0 ? (
+          <p className="cb-file-empty">
+            {treeFiles ? '(无)' : '加载文件树中…'}
+          </p>
+        ) : (
+          <TreeView
+            data={fileTree.data}
+            className="cb-tree"
+            expandedIds={expandedIds}
+            selectedIds={selectedTreeId ? [selectedTreeId] : []}
+            onExpand={({ element, isExpanded }) => {
+              setExpandedIds((prev) => {
+                const next = new Set(prev)
+                if (isExpanded) next.add(element.id)
+                else next.delete(element.id)
+                return Array.from(next)
+              })
+            }}
+            nodeRenderer={({
+              element,
+              getNodeProps,
+              handleExpand,
+              isBranch,
+              isExpanded,
+              level,
+            }) => {
+              const path = element.metadata?.path ?? ''
+              const isFile = element.metadata?.kind === 'file'
+              const isLevelFile = isFile && levelFileSet.has(path)
+              const isActive = isFile && path === normalizeRepoPath(currentFile ?? '')
+              const nodeProps = getNodeProps({
+                onClick: (event) => {
+                  if (isBranch) handleExpand(event)
+                  else if (isFile) selectFile(path)
+                },
+              })
+
+              return (
+                <div
+                  {...nodeProps}
+                  className={`cb-tree-node ${isBranch ? 'cb-tree-node--branch' : 'cb-tree-node--file'} ${
+                    isLevelFile ? 'cb-tree-node--level-file' : ''
+                  } ${isActive ? 'cb-tree-node--active' : ''}`}
+                  data-tree-file={isFile ? path : undefined}
+                  title={isFile ? path : undefined}
+                  style={{ paddingLeft: `${Math.max(level - 1, 0) * 12 + 4}px` }}
+                >
+                  <span className="cb-tree-icon">
+                    {isBranch ? (isExpanded ? '▾' : '▸') : isLevelFile ? '★' : '•'}
+                  </span>
+                  <span className="cb-tree-name">{element.name}</span>
+                </div>
+              )
+            }}
+          />
         )}
       </aside>
 

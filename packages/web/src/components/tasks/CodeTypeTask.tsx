@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { judgeCodeType, type Task } from '@code-quest/shared'
+import { judgeCodeType, type Task } from '@sourcerealm/shared'
 import * as api from '../../api.js'
 import { useStore } from '../../store.js'
 

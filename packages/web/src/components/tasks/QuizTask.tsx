@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { judgeQuiz, type Task } from '@code-quest/shared'
+import { judgeQuiz, type Task } from '@sourcerealm/shared'
 
 type QuizTask = Extract<Task, { type: 'quiz' }>
 
