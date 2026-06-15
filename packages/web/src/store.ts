@@ -10,6 +10,16 @@ export interface Toast {
   text: string
 }
 
+export type ConfirmVariant = 'warning' | 'danger'
+export interface ConfirmDialogState {
+  title: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  variant?: ConfirmVariant
+  onConfirm: () => void
+}
+
 /** toast 自动消失时长(ms);error 停留更久 */
 const TOAST_TTL: Record<ToastType, number> = { info: 4000, success: 4000, warning: 6000, error: 8000 }
 let toastSeq = 0
@@ -26,6 +36,7 @@ interface GameState {
   crt: boolean
   updateBaseline: string | null
   toasts: Toast[]
+  confirmDialog: ConfirmDialogState | null
 
   setScreen: (screen: Screen) => void
   setUpdateBaseline: (anchor: string | null) => void
@@ -38,6 +49,8 @@ interface GameState {
   toggleCrt: () => void
   pushToast: (type: ToastType, text: string) => void
   dismissToast: (id: number) => void
+  showConfirm: (dialog: ConfirmDialogState) => void
+  hideConfirm: () => void
 }
 
 export const useStore = create<GameState>((set) => ({
@@ -52,6 +65,7 @@ export const useStore = create<GameState>((set) => ({
   crt: true,
   updateBaseline: null,
   toasts: [],
+  confirmDialog: null,
 
   setScreen: (screen) => set({ screen }),
   setUpdateBaseline: (anchor) => set({ updateBaseline: anchor }),
@@ -68,4 +82,6 @@ export const useStore = create<GameState>((set) => ({
     setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), TOAST_TTL[type])
   },
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  showConfirm: (dialog) => set({ confirmDialog: dialog }),
+  hideConfirm: () => set({ confirmDialog: null }),
 }))

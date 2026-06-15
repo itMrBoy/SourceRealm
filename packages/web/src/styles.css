@@ -1640,3 +1640,56 @@ body.col-resizing {
     opacity: 1;
   }
 }
+
+/* ---------- Confirm Dialog(全局确认框) ---------- */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500; /* 高于 toast 和界面内容,低于 pointer-events:none 的 CRT 滤镜 */
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 4, 14, 0.68);
+}
+
+.confirm-card {
+  width: min(520px, 100%);
+  border-color: var(--cq-gold);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.35), 0 18px 48px rgba(0, 0, 0, 0.55);
+  animation: confirm-in 0.14s ease-out;
+}
+
+.confirm-title {
+  margin: 0 0 12px;
+  color: var(--cq-gold);
+  font-size: 13px;
+}
+
+.confirm-message {
+  margin: 0;
+  color: #d8d8ee;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.confirm-actions .nes-btn {
+  min-width: 110px;
+}
+
+@keyframes confirm-in {
+  from {
+    transform: translateY(10px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}

@@ -6,6 +6,7 @@ import { LevelScreen } from './screens/LevelScreen.js'
 import { BadgesScreen } from './screens/BadgesScreen.js'
 import { CertScreen } from './screens/CertScreen.js'
 import { ToastContainer } from './components/Toast.js'
+import { ConfirmDialog } from './components/ConfirmDialog.js'
 
 export function App() {
   const screen = useStore((s) => s.screen)
@@ -36,6 +37,7 @@ export function App() {
   return (
     <div className={crt ? 'crt' : ''}>
       {content}
+      <ConfirmDialog />
       <ToastContainer />
     </div>
   )

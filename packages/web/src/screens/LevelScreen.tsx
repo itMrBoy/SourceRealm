@@ -24,6 +24,7 @@ export function LevelScreen(): JSX.Element {
   const projectId = useStore((s) => s.projectId)
   const levelId = useStore((s) => s.currentLevelId)
   const setScreen = useStore((s) => s.setScreen)
+  const showConfirm = useStore((s) => s.showConfirm)
 
   const setCourse = useStore((s) => s.setCourse)
   const setProgress = useStore((s) => s.setProgress)
@@ -116,9 +117,19 @@ export function LevelScreen(): JSX.Element {
 
   const exit = useCallback(() => {
     const midRun = phase === 'narrative' || phase === 'answering' || phase === 'feedback'
-    if (midRun && !window.confirm('关卡尚未完成,确定退出?进度不会保存。')) return
+    if (midRun) {
+      showConfirm({
+        title: '退出关卡',
+        message: '关卡尚未完成,确定退出?进度不会保存。',
+        confirmText: '确定退出',
+        cancelText: '继续闯关',
+        variant: 'danger',
+        onConfirm: () => setScreen('map'),
+      })
+      return
+    }
     setScreen('map')
-  }, [phase, setScreen])
+  }, [phase, setScreen, showConfirm])
 
   const onAnswer = useCallback(
     (correct: boolean, _task: Task) => {

@@ -14,6 +14,7 @@ Primary package: `packages/web`.
 - file tree cache
 - muted/CRT settings
 - update baseline
+- global toast and confirm-dialog state
 
 `src/game/run.ts` is the per-level runtime store. It tracks:
 
@@ -35,6 +36,10 @@ Primary package: `packages/web`.
 - `MapScreen.tsx` checks for repository updates on entry, renders chapter zones, computes unlock/current state, and routes into levels.
 - `LevelScreen.tsx` loads level data, auto-opens the current task's first referenced file, wires treasure-hunt line clicks, manages split layout, and submits settlement.
 - `BadgesScreen.tsx` and `CertScreen.tsx` render reward/progress surfaces.
+
+## Global Feedback
+
+`ToastContainer` renders non-blocking message feedback from the global store. `ConfirmDialog` renders blocking in-app confirmations and should be used instead of browser-native `window.confirm` / `alert` so pixel-style UI remains consistent.
 
 ## Code Browser File Rail
 
