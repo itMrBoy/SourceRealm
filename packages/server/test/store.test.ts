@@ -1,7 +1,8 @@
+import path from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { ProjectStore, projectIdFor } from '../src/store.js'
-import { emptyProgress } from '@code-quest/shared'
-import type { Level, ProjectMeta } from '@code-quest/shared'
+import { ProjectStore, dataRoot, projectIdFor } from '../src/store.js'
+import { emptyProgress } from '@sourcerealm/shared'
+import type { Level, ProjectMeta } from '@sourcerealm/shared'
 import { makeDataHome } from './helpers.js'
 
 const meta: ProjectMeta = {
@@ -26,6 +27,18 @@ describe('ProjectStore', () => {
   it('projectIdFor 对同一路径稳定', () => {
     expect(projectIdFor('/tmp/demo')).toBe(projectIdFor('/tmp/demo'))
     expect(projectIdFor('/tmp/demo')).toHaveLength(12)
+  })
+
+  it('SOURCEREALM_HOME 留空时回退到启动目录下的 .sourcerealm', () => {
+    const savedInitCwd = process.env.INIT_CWD
+    process.env.SOURCEREALM_HOME = ''
+    process.env.INIT_CWD = path.join(process.cwd(), 'demo-root')
+    try {
+      expect(dataRoot()).toBe(path.join(process.cwd(), 'demo-root', '.sourcerealm'))
+    } finally {
+      if (savedInitCwd === undefined) delete process.env.INIT_CWD
+      else process.env.INIT_CWD = savedInitCwd
+    }
   })
 
   it('meta/course/progress/level 读写往返', async () => {

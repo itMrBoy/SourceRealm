@@ -50,9 +50,9 @@ export async function commitChange(
   await git('commit', '-m', msg)
 }
 
-/** 临时数据目录(隔离 ~/.code-quest) */
+/** 临时数据目录(隔离默认 .sourcerealm) */
 export async function makeDataHome(): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'cq-home-'))
-  process.env.CODE_QUEST_HOME = dir
+  process.env.SOURCEREALM_HOME = dir
   return dir
 }

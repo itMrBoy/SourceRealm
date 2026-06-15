@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { promises as fs } from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 import type { z } from 'zod'
 import {
@@ -12,10 +11,12 @@ import {
   type Level,
   type Progress,
   type ProjectMeta,
-} from '@code-quest/shared'
+} from '@sourcerealm/shared'
 
 export function dataRoot(): string {
-  return process.env.CODE_QUEST_HOME ?? path.join(os.homedir(), '.code-quest')
+  const configured = process.env.SOURCEREALM_HOME?.trim()
+  const defaultBase = process.env.INIT_CWD?.trim() || process.cwd()
+  return configured ? path.resolve(configured) : path.resolve(defaultBase, '.sourcerealm')
 }
 
 export function projectIdFor(repoPath: string): string {

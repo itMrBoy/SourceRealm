@@ -60,7 +60,61 @@ describe('HTTP API', () => {
     const a = await app()
     const res = await a.inject({ method: 'GET', url: '/api/provider' })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ available: true, name: 'mock' })
+    // mode 由 SOURCEREALM_USE_CLI 推断(测试未设置 → 'unset');provider 由测试注入为 mock
+    expect(res.json()).toMatchObject({ available: true, name: 'mock' })
+    expect(res.json()).toHaveProperty('mode')
+  })
+
+  it('GET /api/provider 在 API 模式返回订阅/API 地址', async () => {
+    const savedFlag = process.env.SOURCEREALM_USE_CLI
+    const savedBase = process.env.ANTHROPIC_BASE_URL
+    process.env.SOURCEREALM_USE_CLI = 'false'
+    process.env.ANTHROPIC_BASE_URL = 'https://relay.example.com'
+    try {
+      const a = await app()
+      const res = await a.inject({ method: 'GET', url: '/api/provider' })
+      expect(res.statusCode).toBe(200)
+      expect(res.json()).toMatchObject({
+        mode: 'anthropic-api',
+        apiBaseUrl: 'https://relay.example.com',
+        apiBaseUrlSource: 'env',
+      })
+    } finally {
+      if (savedFlag === undefined) delete process.env.SOURCEREALM_USE_CLI
+      else process.env.SOURCEREALM_USE_CLI = savedFlag
+      if (savedBase === undefined) delete process.env.ANTHROPIC_BASE_URL
+      else process.env.ANTHROPIC_BASE_URL = savedBase
+    }
+  })
+
+  it('GET /api/provider 按实际 Provider 名称补充 API 地址', async () => {
+    const savedFlag = process.env.SOURCEREALM_USE_CLI
+    const savedBase = process.env.ANTHROPIC_BASE_URL
+    delete process.env.SOURCEREALM_USE_CLI
+    process.env.ANTHROPIC_BASE_URL = 'https://relay-by-provider.example.com'
+    try {
+      const a = await buildApp({
+        provider: {
+          name: 'anthropic-api',
+          async generate(opts) {
+            return opts.schema.parse(levelDraft)
+          },
+        },
+      })
+      const res = await a.inject({ method: 'GET', url: '/api/provider' })
+      expect(res.statusCode).toBe(200)
+      expect(res.json()).toMatchObject({
+        mode: 'unset',
+        name: 'anthropic-api',
+        apiBaseUrl: 'https://relay-by-provider.example.com',
+        apiBaseUrlSource: 'env',
+      })
+    } finally {
+      if (savedFlag === undefined) delete process.env.SOURCEREALM_USE_CLI
+      else process.env.SOURCEREALM_USE_CLI = savedFlag
+      if (savedBase === undefined) delete process.env.ANTHROPIC_BASE_URL
+      else process.env.ANTHROPIC_BASE_URL = savedBase
+    }
   })
 
   it('导入 → 自动生成 → 读课程与关卡 → 读源码 → 提交通关', async () => {
@@ -116,6 +170,40 @@ describe('HTTP API', () => {
     expect(r2.id).toBe(r1.id)
     const list = (await a.inject({ method: 'GET', url: '/api/projects' })).json()
     expect(list.projects).toHaveLength(1)
+  })
+
+  it('POST generate:重试失败关卡时先写入 generating,避免前端读到旧 done', async () => {
+    let levelAttempts = 0
+    let releaseRetry!: () => void
+    const retryStarted = new Promise<void>((resolve) => {
+      releaseRetry = resolve
+    })
+    const a = await buildApp({
+      provider: new MockProvider(async (opts: GenerateOptions<unknown>) => {
+        if (opts.schemaName === 'course') return courseDraft
+        levelAttempts++
+        if (levelAttempts <= 3) throw new Error('first level failure')
+        await retryStarted
+        return levelDraft
+      }),
+    })
+    const { id } = (await a.inject({ method: 'POST', url: '/api/projects', payload: { path: repo } })).json()
+    await waitForDone(a, id)
+
+    const failedProject = (await a.inject({ method: 'GET', url: `/api/projects/${id}` })).json()
+    expect(failedProject.meta.generation.status).toBe('done')
+    expect(failedProject.course.chapters[0].levels[0].status).toBe('failed')
+
+    const retry = await a.inject({ method: 'POST', url: `/api/projects/${id}/generate` })
+    expect(retry.statusCode).toBe(200)
+    const retryingProject = (await a.inject({ method: 'GET', url: `/api/projects/${id}` })).json()
+    expect(retryingProject.meta.generation.status).toBe('generating')
+    expect(retryingProject.course.chapters[0].levels[0].status).not.toBe('failed')
+
+    releaseRetry()
+    await waitForDone(a, id)
+    const doneProject = (await a.inject({ method: 'GET', url: `/api/projects/${id}` })).json()
+    expect(doneProject.course.chapters[0].levels[0].status).toBe('ready')
   })
 
   it('update-check:刚生成无新提交 → changed=false', async () => {

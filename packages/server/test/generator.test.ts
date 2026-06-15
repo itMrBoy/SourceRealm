@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { LevelGenerator } from '../src/generator.js'
+import { LevelGenerator, readConcurrency, runWithConcurrency } from '../src/generator.js'
 import { MockProvider } from '../src/providers.js'
 import { RepoScanner } from '../src/scanner.js'
 import { ProjectStore, projectIdFor } from '../src/store.js'
@@ -39,6 +39,33 @@ function mockProvider() {
     opts.schemaName === 'course' ? courseDraft : levelDraft,
   )
 }
+
+describe('readConcurrency', () => {
+  it('合法正整数生效,非法/缺失回落默认 3', () => {
+    expect(readConcurrency({ SOURCEREALM_CONCURRENCY: '5' } as NodeJS.ProcessEnv)).toBe(5)
+    expect(readConcurrency({ SOURCEREALM_CONCURRENCY: '1' } as NodeJS.ProcessEnv)).toBe(1)
+    expect(readConcurrency({} as NodeJS.ProcessEnv)).toBe(3)
+    expect(readConcurrency({ SOURCEREALM_CONCURRENCY: '0' } as NodeJS.ProcessEnv)).toBe(3)
+    expect(readConcurrency({ SOURCEREALM_CONCURRENCY: 'abc' } as NodeJS.ProcessEnv)).toBe(3)
+  })
+})
+
+describe('runWithConcurrency', () => {
+  it('同序返回结果,且同时进行数不超过 limit', async () => {
+    let active = 0
+    let peak = 0
+    const items = [1, 2, 3, 4, 5, 6]
+    const out = await runWithConcurrency(items, 2, async (n) => {
+      active++
+      peak = Math.max(peak, active)
+      await new Promise((r) => setTimeout(r, 10))
+      active--
+      return n * 2
+    })
+    expect(out).toEqual([2, 4, 6, 8, 10, 12])
+    expect(peak).toBeLessThanOrEqual(2)
+  })
+})
 
 describe('LevelGenerator', () => {
   let repo: string
@@ -104,5 +131,83 @@ describe('LevelGenerator', () => {
     const course = (await store.readCourse())!
     expect(course.chapters[0].levels[0].status).toBe('failed')
     expect((await store.readMeta())!.generation.status).toBe('done')
+  })
+
+  it('出题 prompt 注入整体课程大纲(关卡分工递进),且不内嵌大段源码', async () => {
+    const { scanner, store } = await setup()
+    let levelPrompt = ''
+    const capturing = new MockProvider((opts: GenerateOptions<unknown>) => {
+      if (opts.schemaName === 'course') return courseDraft
+      levelPrompt = opts.prompt
+      return levelDraft
+    })
+    await new LevelGenerator(store, scanner, capturing).run()
+    // 含课程大纲(其它关卡 title/goal),保证 LLM 知道全局分工
+    expect(levelPrompt).toContain('整体课程大纲')
+    expect(levelPrompt).toContain('读懂 login 函数') // 来自大纲的 goal
+    // 不再把整段源码(行号块)塞进基础 prompt
+    expect(levelPrompt).not.toContain('1| function login')
+  })
+
+  it('SDK 路径:buildEmbeddedContext 被调用,返回行号源码块', async () => {
+    const { scanner, store } = await setup()
+    let embedded = ''
+    // 模拟 SDK provider:消费 buildEmbeddedContext(CLI provider 则不会调用它)
+    const sdkLike = new MockProvider(async (opts: GenerateOptions<unknown>) => {
+      if (opts.schemaName === 'course') {
+        await opts.buildEmbeddedContext?.()
+        return courseDraft
+      }
+      embedded = (await opts.buildEmbeddedContext?.()) ?? ''
+      return levelDraft
+    })
+    await new LevelGenerator(store, scanner, sdkLike).run()
+    expect(embedded).toContain('=== src/auth.js ===')
+    expect(embedded).toMatch(/1\| function login/)
+  })
+
+  it('并发受 SOURCEREALM_CONCURRENCY 限制,且并发完成后数据一致', async () => {
+    process.env.SOURCEREALM_CONCURRENCY = '2'
+    // 构造 5 关课程(每章 ≤4 关,故拆成两章满足 CourseDraftSchema)
+    const bigCourse = {
+      projectName: 'demo',
+      tagline: 't',
+      chapters: [
+        {
+          id: 'ch1', title: '章节一', intro: 'i1',
+          levels: Array.from({ length: 3 }, (_, i) => ({
+            id: `lv${i}`, title: `关${i}`, goal: `目标${i}`, files: ['src/auth.js'],
+          })),
+        },
+        {
+          id: 'ch2', title: '章节二', intro: 'i2',
+          levels: Array.from({ length: 2 }, (_, i) => ({
+            id: `lv${i + 3}`, title: `关${i + 3}`, goal: `目标${i + 3}`, files: ['src/auth.js'],
+          })),
+        },
+      ],
+    }
+    let active = 0
+    let peak = 0
+    const concurrent = new MockProvider(async (opts: GenerateOptions<unknown>) => {
+      if (opts.schemaName === 'course') return bigCourse
+      active++
+      peak = Math.max(peak, active)
+      await new Promise((r) => setTimeout(r, 20))
+      active--
+      return levelDraft
+    })
+    const { scanner, store } = await setup()
+    await new LevelGenerator(store, scanner, concurrent).run()
+    delete process.env.SOURCEREALM_CONCURRENCY
+
+    expect(peak).toBeLessThanOrEqual(2) // 并发上限生效
+    const course = (await store.readCourse())!
+    // 5 关全部 ready,course 写盘无竞态丢更新
+    const allLevels = course.chapters.flatMap((c) => c.levels)
+    expect(allLevels.every((l) => l.status === 'ready')).toBe(true)
+    for (let i = 0; i < 5; i++) {
+      expect(await store.readLevel(`lv${i}`)).not.toBeNull()
+    }
   })
 })

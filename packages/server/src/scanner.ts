@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { execa } from 'execa'
-import type { CodeRef } from '@code-quest/shared'
+import type { CodeRef } from '@sourcerealm/shared'
 
 const MAX_FILES = 5000
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'vendor'])

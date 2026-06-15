@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { Course, Level, Progress } from '@code-quest/shared'
+import type { Course, Level, Progress } from '@sourcerealm/shared'
 import { RepoScanner } from '../src/scanner.js'
 import { LevelGenerator } from '../src/generator.js'
 import { MockProvider, type GenerateOptions } from '../src/providers.js'
@@ -178,11 +178,11 @@ const levelDraftB = {
   ],
 }
 
-/** 初始生成所用 mock:按 outline 标题分发出题草稿 */
+/** 初始生成所用 mock:按 outline 标题分发出题草稿(用「关卡: 标题」精确匹配,避免被课程大纲文本干扰) */
 function genMock() {
   return new MockProvider((opts: GenerateOptions<unknown>) => {
     if (opts.schemaName === 'course') return courseDraft
-    return opts.prompt.includes('README') ? levelDraftB : levelDraftA
+    return opts.prompt.includes('关卡: 项目说明') ? levelDraftB : levelDraftA
   })
 }
 

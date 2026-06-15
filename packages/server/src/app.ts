@@ -10,10 +10,10 @@ import {
   applyLevelResult,
   emptyProgress,
   type Progress,
-} from '@code-quest/shared'
+} from '@sourcerealm/shared'
 import type { EventEmitter } from 'node:events'
 import { LevelGenerator, taskRefs, type GenEvent } from './generator.js'
-import { detectProvider, type LLMProvider } from './providers.js'
+import { detectProviderMode, selectProvider, type LLMProvider } from './providers.js'
 import { RepoScanner } from './scanner.js'
 import { ProjectStore, projectIdFor } from './store.js'
 import { CourseUpdater, checkForUpdates, type UpdateEvent } from './updater.js'
@@ -41,6 +41,13 @@ const LevelDoneBodySchema = z.object({
 })
 const FileReadBodySchema = z.object({ file: z.string().min(1) })
 
+function anthropicApiBaseInfo(): { apiBaseUrl: string; apiBaseUrlSource: 'env' | 'default' } {
+  const configured = process.env.ANTHROPIC_BASE_URL?.trim()
+  return configured
+    ? { apiBaseUrl: configured, apiBaseUrlSource: 'env' }
+    : { apiBaseUrl: 'https://api.anthropic.com', apiBaseUrlSource: 'default' }
+}
+
 export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
   // 本地工具,放开 CORS 以便 vite dev(不同源)直接访问 API
@@ -54,7 +61,7 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
   const generators = new Map<string, Runnable>()
 
   async function getProvider(): Promise<LLMProvider> {
-    if (!provider) provider = await detectProvider()
+    if (!provider) provider = await selectProvider()
     return provider
   }
 
@@ -102,11 +109,14 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 
   // 当前 AI Provider(导入向导展示用;不触发懒探测之外的副作用)
   app.get('/api/provider', async () => {
+    const mode = detectProviderMode()
     try {
       const llm = await getProvider()
-      return { available: true, name: llm.name }
+      const apiInfo = mode === 'anthropic-api' || llm.name === 'anthropic-api' ? anthropicApiBaseInfo() : {}
+      return { mode, available: true, name: llm.name, ...apiInfo }
     } catch (err) {
-      return { available: false, error: String((err as Error).message) }
+      const apiInfo = mode === 'anthropic-api' ? anthropicApiBaseInfo() : {}
+      return { mode, available: false, error: String((err as Error).message), ...apiInfo }
     }
   })
 
@@ -134,7 +144,13 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
         for (const lv of ch.levels) if (lv.status === 'failed') lv.status = 'pending'
       await store.writeCourse(course)
     }
-    await startGeneration(store, scanner)
+    await store.writeMeta({ ...meta, generation: { status: 'generating' } })
+    try {
+      await startGeneration(store, scanner)
+    } catch (err) {
+      await store.writeMeta({ ...meta, generation: { status: 'error', error: String((err as Error).message) } })
+      throw err
+    }
     return { ok: true }
   })
 

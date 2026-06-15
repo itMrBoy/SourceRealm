@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { execa } from 'execa'
 import { z } from 'zod'
-import type { Chapter, Course, Level, LevelOutline } from '@code-quest/shared'
+import type { Chapter, Course, Level, LevelOutline } from '@sourcerealm/shared'
 import { LevelGenerator, LevelDraftSchema, taskRefs } from './generator.js'
 import { generateWithRetry, type LLMProvider } from './providers.js'
 import type { RepoScanner } from './scanner.js'
@@ -286,21 +286,6 @@ export class CourseUpdater extends EventEmitter {
   ): Promise<Level> {
     const oldLevel = await this.store.readLevel(outline.id)
 
-    const fileBlocks: string[] = []
-    for (const file of files) {
-      const content = await this.scanner.readFile(file).catch(() => null)
-      if (content === null) {
-        fileBlocks.push(`=== ${file} ===\n(文件已删除)`)
-        continue
-      }
-      const numbered = content
-        .slice(0, MAX_FILE_CHARS)
-        .split('\n')
-        .map((l, i) => `${i + 1}| ${l}`)
-        .join('\n')
-      fileBlocks.push(`=== ${file} ===\n${numbered}`)
-    }
-
     let diffText = ''
     try {
       const { stdout } = await execa(
@@ -313,13 +298,14 @@ export class CourseUpdater extends EventEmitter {
       diffText = ''
     }
 
+    const fileList = files.map((f) => `- ${f}`).join('\n')
     const prompt = `你是「源码闯关游戏」的关卡维护者。下面这一关引用的源码发生了变化,请做「最小改动」的修订。
 
 旧关卡 JSON:
 ${JSON.stringify(oldLevel ?? { title: outline.title, summary: outline.goal, tasks: [] }, null, 2)}
 
-受影响文件的新版内容(格式为 行号| 内容):
-${fileBlocks.join('\n\n')}
+受影响的文件(请阅读其新版内容):
+${fileList}
 
 相关 git diff:
 ${diffText || '(无 diff 文本)'}
@@ -327,7 +313,7 @@ ${diffText || '(无 diff 文本)'}
 修订要求:
 - 最小改动:仍然有效的任务原样保留,引用行号如有位移请修正。
 - 失效的任务(引用的代码已删除或语义已变)替换为基于新代码的等效新任务。
-- 所有 ref/target 的 file 必须出自上面给出的文件;startLine/endLine 必须与新源码行号一致;contentHash 一律填空字符串 ""。
+- 所有 ref/target 的 file 必须是真实存在的文件;startLine/endLine 必须与新源码真实行号一致;contentHash 一律填空字符串 ""。
 - 输出完整关卡(title、summary、tasks),符合 LevelDraftSchema。`
 
     const draft = await generateWithRetry(this.provider, {
@@ -335,6 +321,25 @@ ${diffText || '(无 diff 文本)'}
       schema: LevelDraftSchema,
       schemaName: 'level',
       cwd: this.scanner.root,
+      explorationHint:
+        '请用 Read 打开「受影响的文件」逐一阅读新版全文,所有 ref 的 startLine/endLine 必须与你 Read 到的真实行号逐字一致。',
+      buildEmbeddedContext: async () => {
+        const fileBlocks: string[] = []
+        for (const file of files) {
+          const content = await this.scanner.readFile(file).catch(() => null)
+          if (content === null) {
+            fileBlocks.push(`=== ${file} ===\n(文件已删除)`)
+            continue
+          }
+          const numbered = content
+            .slice(0, MAX_FILE_CHARS)
+            .split('\n')
+            .map((l, i) => `${i + 1}| ${l}`)
+            .join('\n')
+          fileBlocks.push(`=== ${file} ===\n${numbered}`)
+        }
+        return `受影响文件的新版内容(格式为 行号| 内容):\n${fileBlocks.join('\n\n')}`
+      },
     })
 
     const gen = new LevelGenerator(this.store, this.scanner, this.provider)
@@ -384,6 +389,8 @@ ${diff.added.join('\n')}
       schema: AppendDraftSchema,
       schemaName: 'append',
       cwd: this.scanner.root,
+      explorationHint:
+        '设计前请用 Read/Glob/Grep 阅读「新增的文件清单」中的文件,了解其作用后再决定挂载到哪个章节或新建章节。',
     })
 
     const existingChapterIds = new Set(course.chapters.map((c) => c.id))
