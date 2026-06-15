@@ -208,6 +208,7 @@ describe('CourseUpdater', () => {
       completedLevels: { 'lv-a': { rating: 'S', accuracy: 1, maxCombo: 5, xp: 100 } },
       badges: ['first-blood'],
       filesRead: ['src/auth.js'],
+      levelRuns: {},
     }
     await store.writeProgress(progress)
   })

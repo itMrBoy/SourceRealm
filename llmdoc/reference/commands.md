@@ -13,6 +13,8 @@ pnpm --filter @sourcerealm/web build
 pnpm --filter @sourcerealm/server dev
 ```
 
+The server dev script runs `tsx src/cli.ts --no-open` and is not a file watcher. Restart the backend process after changing server routes or APIs; otherwise the Vite frontend can call a route that exists in source but not in the currently running server and receive 404 `未找到`.
+
 ## Useful Targeted Commands
 
 ```bash

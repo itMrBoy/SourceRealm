@@ -28,6 +28,12 @@ describe('levelInfo', () => {
   })
 })
 
+describe('emptyProgress', () => {
+  it('包含空关卡断点表', () => {
+    expect(emptyProgress().levelRuns).toEqual({})
+  })
+})
+
 const course: Course = {
   projectName: 'demo', tagline: 't',
   chapters: [

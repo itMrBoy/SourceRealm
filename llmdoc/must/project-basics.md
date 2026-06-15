@@ -24,6 +24,7 @@ Runtime data:
 - Default data root: `.sourcerealm/` under the launch directory (uses `INIT_CWD` when pnpm provides it, otherwise `process.cwd()`)
 - Override: `SOURCEREALM_HOME`
 - Per-project state: `project.json`, `course.json`, `levels/*.json`, `progress.json`, and temporary `levels-next/` during updates.
+- `progress.json` includes both durable completion state and unfinished level-run checkpoints; checkpoints are cleared when a level is completed.
 
 AI provider order:
 

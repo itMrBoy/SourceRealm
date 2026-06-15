@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { rateLevel, taskXp, type Level, type Rating, type TaskType } from '@sourcerealm/shared'
+import { rateLevel, taskXp, type Level, type Rating, type SavedAnswer, type SavedRun, type TaskType } from '@sourcerealm/shared'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
 
@@ -41,8 +41,11 @@ export interface RunState {
   settlement: Settlement | null
   /** 防止重复提交结算 */
   settling: boolean
+  /** 已完成题目的只读回顾记录 */
+  answeredHistory: SavedAnswer[]
 
   loadLevel: (projectId: string, levelId: string) => Promise<void>
+  snapshot: () => SavedRun | null
   startAnswering: () => void
   answer: (correct: boolean, taskType: TaskType) => void
   nextTask: () => void
@@ -70,7 +73,12 @@ function freshState() {
     error: null as string | null,
     settlement: null as Settlement | null,
     settling: false,
+    answeredHistory: [] as SavedAnswer[],
   }
+}
+
+function canPersistPhase(phase: RunPhase): phase is SavedRun['phase'] {
+  return phase === 'narrative' || phase === 'answering' || phase === 'feedback' || phase === 'failed'
 }
 
 export const useRun = create<RunState>((set, get) => ({
@@ -80,9 +88,48 @@ export const useRun = create<RunState>((set, get) => ({
     set({ ...freshState(), phase: 'loading' })
     try {
       const { level, freshness } = await api.getLevel(projectId, levelId)
-      set({ level, freshness, phase: 'narrative' })
+      const saved = useStore.getState().progress.levelRuns?.[levelId]
+      if (saved && saved.taskIndex < level.tasks.length) {
+        set({
+          level,
+          freshness,
+          taskIndex: saved.taskIndex,
+          hearts: saved.hearts,
+          combo: saved.combo,
+          maxCombo: saved.maxCombo,
+          xpEarned: saved.xpEarned,
+          wrongAnswers: saved.wrongAnswers,
+          totalAnswers: saved.totalAnswers,
+          scoredTaskCount: saved.scoredTaskCount,
+          phase: saved.phase,
+          lastCorrect: saved.lastCorrect,
+          answeredHistory: saved.answeredHistory,
+        })
+      } else {
+        set({ level, freshness, phase: 'narrative' })
+      }
     } catch (err) {
       set({ phase: 'failed', error: err instanceof Error ? err.message : '关卡加载失败' })
+    }
+  },
+
+  snapshot() {
+    const s = get()
+    if (!s.level || !canPersistPhase(s.phase)) return null
+    return {
+      levelId: s.level.id,
+      taskIndex: s.taskIndex,
+      hearts: s.hearts,
+      combo: s.combo,
+      maxCombo: s.maxCombo,
+      xpEarned: s.xpEarned,
+      wrongAnswers: s.wrongAnswers,
+      totalAnswers: s.totalAnswers,
+      scoredTaskCount: s.scoredTaskCount,
+      phase: s.phase,
+      lastCorrect: s.lastCorrect,
+      answeredHistory: s.answeredHistory,
+      updatedAt: new Date().toISOString(),
     }
   },
 
@@ -92,6 +139,7 @@ export const useRun = create<RunState>((set, get) => ({
 
   answer(correct, taskType) {
     const s = get()
+    const task = s.level?.tasks[s.taskIndex]
     if (correct) {
       set({
         xpEarned: s.xpEarned + taskXp(taskType, s.combo),
@@ -101,6 +149,12 @@ export const useRun = create<RunState>((set, get) => ({
         scoredTaskCount: s.scoredTaskCount + 1,
         phase: 'feedback',
         lastCorrect: true,
+        answeredHistory: task
+          ? [
+              ...s.answeredHistory.filter((a) => a.taskIndex !== s.taskIndex),
+              { taskIndex: s.taskIndex, taskId: task.id, correct: true, explanation: task.explanation },
+            ]
+          : s.answeredHistory,
       })
     } else {
       const hearts = s.hearts - 1
@@ -111,6 +165,12 @@ export const useRun = create<RunState>((set, get) => ({
         totalAnswers: s.totalAnswers + 1,
         phase: hearts <= 0 ? 'failed' : 'feedback',
         lastCorrect: false,
+        answeredHistory: task
+          ? [
+              ...s.answeredHistory.filter((a) => a.taskIndex !== s.taskIndex),
+              { taskIndex: s.taskIndex, taskId: task.id, correct: false, explanation: task.explanation },
+            ]
+          : s.answeredHistory,
       })
     }
   },
@@ -144,6 +204,7 @@ export const useRun = create<RunState>((set, get) => ({
       lastCorrect: null,
       settlement: null,
       settling: false,
+      answeredHistory: [],
     })
   },
 

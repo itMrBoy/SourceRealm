@@ -20,11 +20,18 @@ export function ConfirmDialog(): JSX.Element | null {
   const confirmText = dialog.confirmText ?? '确定'
   const cancelText = dialog.cancelText ?? '取消'
   const confirmClass = dialog.variant === 'danger' ? 'is-error' : 'is-warning'
+  const secondaryClass = dialog.secondaryVariant === 'danger' ? 'is-error' : 'is-warning'
 
   const onConfirm = () => {
     const action = dialog.onConfirm
     hideConfirm()
     action()
+  }
+
+  const onSecondary = () => {
+    const action = dialog.onSecondary
+    hideConfirm()
+    action?.()
   }
 
   return (
@@ -46,6 +53,11 @@ export function ConfirmDialog(): JSX.Element | null {
           <button type="button" className={`nes-btn ${confirmClass}`} onClick={onConfirm} autoFocus>
             {confirmText}
           </button>
+          {dialog.secondaryText && (
+            <button type="button" className={`nes-btn ${secondaryClass}`} onClick={onSecondary}>
+              {dialog.secondaryText}
+            </button>
+          )}
           <button type="button" className="nes-btn" onClick={hideConfirm}>
             {cancelText}
           </button>

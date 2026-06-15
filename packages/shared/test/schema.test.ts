@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CodeRefSchema, LevelSchema, CourseSchema, ProgressSchema, TaskSchema } from '../src/index.js'
+import { CodeRefSchema, LevelSchema, CourseSchema, ProgressSchema, SavedRunSchema, TaskSchema } from '../src/index.js'
 
 const ref = { file: 'src/auth.js', startLine: 1, endLine: 4, contentHash: 'abc123' }
 
@@ -50,6 +50,28 @@ describe('Course/Level/Progress', () => {
     }
     expect(LevelSchema.parse(level).tasks).toHaveLength(1)
     const progress = { xp: 10, completedLevels: { lv1: { rating: 'S', accuracy: 1, maxCombo: 3, xp: 10 } }, badges: ['first-level'], filesRead: ['src/auth.js'] }
-    expect(ProgressSchema.parse(progress).xp).toBe(10)
+    const parsed = ProgressSchema.parse(progress)
+    expect(parsed.xp).toBe(10)
+    expect(parsed.levelRuns).toEqual({})
+  })
+
+  it('解析关卡断点', () => {
+    const saved = {
+      levelId: 'lv1',
+      taskIndex: 1,
+      hearts: 2,
+      combo: 1,
+      maxCombo: 2,
+      xpEarned: 10,
+      wrongAnswers: 1,
+      totalAnswers: 2,
+      scoredTaskCount: 1,
+      phase: 'feedback',
+      lastCorrect: false,
+      answeredHistory: [{ taskIndex: 0, taskId: 't1', correct: true, explanation: 'e' }],
+      updatedAt: '2026-06-16T00:00:00.000Z',
+    }
+    expect(SavedRunSchema.parse(saved).phase).toBe('feedback')
+    expect(() => SavedRunSchema.parse({ ...saved, phase: 'loading' })).toThrow()
   })
 })

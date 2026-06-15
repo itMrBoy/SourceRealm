@@ -54,7 +54,7 @@ export class ProjectStore {
   writeMeta(v: ProjectMeta) { return this.writeJson('project.json', ProjectMetaSchema, v) }
   readCourse() { return this.readJson('course.json', CourseSchema) }
   writeCourse(v: Course) { return this.writeJson('course.json', CourseSchema, v) }
-  readProgress() { return this.readJson('progress.json', ProgressSchema) }
+  readProgress(): Promise<Progress | null> { return this.readJson('progress.json', ProgressSchema) as Promise<Progress | null> }
   writeProgress(v: Progress) { return this.writeJson('progress.json', ProgressSchema, v) }
   readLevel(id: string) { return this.readJson(path.join('levels', `${id}.json`), LevelSchema) }
   writeLevel(v: Level) { return this.writeJson(path.join('levels', `${v.id}.json`), LevelSchema, v) }

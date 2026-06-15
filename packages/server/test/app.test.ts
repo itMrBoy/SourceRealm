@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from '../src/app.js'
 import { MockProvider, type GenerateOptions } from '../src/providers.js'
 import { commitChange, makeDataHome, makeFixtureRepo } from './helpers.js'
+import { ProjectStore, projectIdFor } from '../src/store.js'
+import { emptyProgress } from '@sourcerealm/shared'
 
 const courseDraft = {
   projectName: 'demo',
@@ -26,7 +28,7 @@ const levelDraft = {
 }
 
 async function waitForDone(app: Awaited<ReturnType<typeof buildApp>>, id: string): Promise<void> {
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 200; i++) {
     const res = await app.inject({ method: 'GET', url: `/api/projects/${id}` })
     if (res.json().meta.generation.status === 'done') return
     await new Promise((r) => setTimeout(r, 50))
@@ -63,6 +65,18 @@ describe('HTTP API', () => {
     // mode 由 SOURCEREALM_USE_CLI 推断(测试未设置 → 'unset');provider 由测试注入为 mock
     expect(res.json()).toMatchObject({ available: true, name: 'mock' })
     expect(res.json()).toHaveProperty('mode')
+  })
+
+  it('POST /api/system/pick-directory 返回系统目录选择结果', async () => {
+    const a = await buildApp({
+      provider: new MockProvider((opts: GenerateOptions<unknown>) =>
+        opts.schemaName === 'course' ? courseDraft : levelDraft,
+      ),
+      directoryPicker: async () => repo,
+    })
+    const res = await a.inject({ method: 'POST', url: '/api/system/pick-directory' })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().path).toBe(repo)
   })
 
   it('GET /api/provider 在 API 模式返回订阅/API 地址', async () => {
@@ -160,6 +174,73 @@ describe('HTTP API', () => {
       payload: { levelId: 'lv-auth', result: { rating: 'S', accuracy: 1, maxCombo: 2, xp: 50 }, taskCount: 2 },
     })).json()
     expect(better.progress.xp).toBe(50)
+  })
+
+  it('保存、读取、删除关卡断点,通关后清理断点', async () => {
+    const a = await app()
+    const id = projectIdFor(repo)
+    const store = new ProjectStore(id)
+    await store.writeMeta({
+      id,
+      path: repo,
+      name: 'demo',
+      isGit: true,
+      anchorCommit: null,
+      createdAt: '2026-06-16T00:00:00.000Z',
+      generation: { status: 'done' },
+    })
+    await store.writeProgress(emptyProgress())
+    await store.writeCourse({
+      projectName: 'demo',
+      tagline: '一段奇妙的源码之旅',
+      chapters: [{
+        id: 'ch1',
+        title: '初入江湖',
+        intro: '了解项目全貌',
+        levels: [{ id: 'lv-auth', title: '登录大门', goal: '读懂 login', files: ['src/auth.js'], status: 'ready' }],
+      }],
+    })
+    const savedRun = {
+      levelId: 'lv-auth',
+      taskIndex: 1,
+      hearts: 2,
+      combo: 1,
+      maxCombo: 1,
+      xpEarned: 10,
+      wrongAnswers: 1,
+      totalAnswers: 2,
+      scoredTaskCount: 1,
+      phase: 'feedback',
+      lastCorrect: false,
+      answeredHistory: [{ taskIndex: 0, taskId: 't1', correct: true, explanation: 'e' }],
+      updatedAt: '2026-06-16T00:00:00.000Z',
+    }
+
+    const save = await a.inject({
+      method: 'PUT',
+      url: `/api/projects/${id}/progress/level-run`,
+      payload: savedRun,
+    })
+    expect(save.statusCode).toBe(200)
+    expect(save.json().progress.levelRuns['lv-auth'].taskIndex).toBe(1)
+    expect((await a.inject({ method: 'GET', url: `/api/projects/${id}` })).json().progress.levelRuns['lv-auth']).toBeTruthy()
+
+    const del = await a.inject({ method: 'DELETE', url: `/api/projects/${id}/progress/level-run/lv-auth` })
+    expect(del.statusCode).toBe(200)
+    expect(del.json().progress.levelRuns['lv-auth']).toBeUndefined()
+
+    await a.inject({
+      method: 'PUT',
+      url: `/api/projects/${id}/progress/level-run`,
+      payload: savedRun,
+    })
+    const done = await a.inject({
+      method: 'POST',
+      url: `/api/projects/${id}/progress/level`,
+      payload: { levelId: 'lv-auth', result: { rating: 'S', accuracy: 1, maxCombo: 2, xp: 35 }, taskCount: 2 },
+    })
+    expect(done.statusCode).toBe(200)
+    expect(done.json().progress.levelRuns['lv-auth']).toBeUndefined()
   })
 
   it('重复导入同一路径复用同一项目', async () => {

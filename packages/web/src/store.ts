@@ -16,8 +16,11 @@ export interface ConfirmDialogState {
   message: string
   confirmText?: string
   cancelText?: string
+  secondaryText?: string
   variant?: ConfirmVariant
+  secondaryVariant?: ConfirmVariant
   onConfirm: () => void
+  onSecondary?: () => void
 }
 
 /** toast 自动消失时长(ms);error 停留更久 */
@@ -53,6 +56,10 @@ interface GameState {
   hideConfirm: () => void
 }
 
+function normalizeProgress(progress: Progress): Progress {
+  return { ...emptyProgress(), ...progress, levelRuns: progress.levelRuns ?? {} }
+}
+
 export const useStore = create<GameState>((set) => ({
   screen: 'home',
   projectId: null,
@@ -71,7 +78,7 @@ export const useStore = create<GameState>((set) => ({
   setUpdateBaseline: (anchor) => set({ updateBaseline: anchor }),
   setProject: (id, name) => set({ projectId: id, projectName: name, tree: null }),
   setCourse: (course) => set({ course }),
-  setProgress: (progress) => set({ progress }),
+  setProgress: (progress) => set({ progress: normalizeProgress(progress) }),
   openLevel: (levelId) => set({ currentLevelId: levelId, screen: 'level' }),
   setTree: (tree) => set({ tree }),
   toggleMuted: () => set((s) => ({ muted: !s.muted })),

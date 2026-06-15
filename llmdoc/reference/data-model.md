@@ -52,9 +52,13 @@ Full level JSON contains tasks and the actual referenced file list.
 
 ## Progress
 
-`Progress` stores total XP, completed level results, badges, and read files.
+`Progress` stores total XP, completed level results, badges, read files, and unfinished level-run checkpoints.
 
 Repeated completion does not duplicate XP. The server only adds a positive XP delta if the new result is worth more than the previous result.
+
+`levelRuns` is keyed by level id and stores unfinished in-level checkpoints. A saved run includes the current task index, hearts, combo, max combo, XP earned inside the run, answer counters, scored task count, restorable run phase, last answer result, answered-history entries for read-only "previous question" review, and `updatedAt`.
+
+Level-run checkpoints are not completions. They do not update `completedLevels`, grant badges, or add total XP. A successful level settlement clears the checkpoint for that level.
 
 ## Scoring
 

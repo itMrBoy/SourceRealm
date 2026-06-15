@@ -43,7 +43,7 @@ export function levelInfo(xp: number): { level: number; title: string; nextAt: n
 }
 
 export function emptyProgress(): Progress {
-  return { xp: 0, completedLevels: {}, badges: [], filesRead: [] }
+  return { xp: 0, completedLevels: {}, badges: [], filesRead: [], levelRuns: {} }
 }
 
 export interface LevelCompletion {

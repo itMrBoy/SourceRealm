@@ -43,6 +43,14 @@ export function Hud(): JSX.Element {
       <div className="hud-right">
         <button
           type="button"
+          className="nes-btn hud-btn"
+          onClick={() => setScreen('home')}
+          title="返回主菜单"
+        >
+          主菜单
+        </button>
+        <button
+          type="button"
           className="nes-btn hud-btn hud-badges"
           onClick={() => setScreen('badges')}
           title="查看徽章"

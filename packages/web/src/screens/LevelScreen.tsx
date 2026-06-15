@@ -25,6 +25,7 @@ export function LevelScreen(): JSX.Element {
   const levelId = useStore((s) => s.currentLevelId)
   const setScreen = useStore((s) => s.setScreen)
   const showConfirm = useStore((s) => s.showConfirm)
+  const pushToast = useStore((s) => s.pushToast)
 
   const setCourse = useStore((s) => s.setCourse)
   const setProgress = useStore((s) => s.setProgress)
@@ -41,6 +42,7 @@ export function LevelScreen(): JSX.Element {
   const finishLevel = useRun((s) => s.finishLevel)
   const retryLevel = useRun((s) => s.retryLevel)
   const reset = useRun((s) => s.reset)
+  const snapshot = useRun((s) => s.snapshot)
 
   const [activeFile, setActiveFile] = useState<string | null>(null)
   const [highlightRef, setHighlightRef] = useState<HighlightRef | null>(null)
@@ -67,11 +69,26 @@ export function LevelScreen(): JSX.Element {
     setLeftPercent(Math.min(Math.max(pct, 25), 80))
   }, [])
 
-  // 挂载:加载关卡
+  // 挂载:先刷新项目进度,再加载关卡,避免保存后重新进入时使用旧 store。
   useEffect(() => {
-    if (projectId && levelId) void loadLevel(projectId, levelId)
-    return () => reset()
-  }, [projectId, levelId, loadLevel, reset])
+    if (!projectId || !levelId) return () => reset()
+    let alive = true
+    void (async () => {
+      try {
+        const { course: c, progress } = await api.getProject(projectId)
+        if (!alive) return
+        setCourse(c)
+        setProgress(progress)
+      } catch {
+        if (alive) pushToast('warning', '读取最新进度失败，将尝试使用本地已有进度进入关卡')
+      }
+      if (alive) void loadLevel(projectId, levelId)
+    })()
+    return () => {
+      alive = false
+      reset()
+    }
+  }, [projectId, levelId, loadLevel, pushToast, reset, setCourse, setProgress])
 
   const task: Task | undefined = level?.tasks[taskIndex]
   const taskCount = level?.tasks.length ?? 0
@@ -89,6 +106,21 @@ export function LevelScreen(): JSX.Element {
   useEffect(() => {
     if (phase === 'level-done' && projectId) void finishLevel(projectId)
   }, [phase, projectId, finishLevel])
+
+  // 页面关闭/刷新时尽量保存断点;显式退出保存仍是可靠路径
+  useEffect(() => {
+    if (!projectId) return
+    const persist = () => {
+      const run = snapshot()
+      if (run) api.saveLevelRunBestEffort(projectId, run)
+    }
+    window.addEventListener('pagehide', persist)
+    window.addEventListener('beforeunload', persist)
+    return () => {
+      window.removeEventListener('pagehide', persist)
+      window.removeEventListener('beforeunload', persist)
+    }
+  }, [projectId, snapshot])
 
   const backToMap = useCallback(() => {
     setScreen('map')
@@ -115,21 +147,51 @@ export function LevelScreen(): JSX.Element {
     return map
   }, [course])
 
-  const exit = useCallback(() => {
-    const midRun = phase === 'narrative' || phase === 'answering' || phase === 'feedback'
-    if (midRun) {
+  const leaveLevel = useCallback((target: 'map' | 'home') => {
+    const run = snapshot()
+    if (projectId && run) {
       showConfirm({
         title: '退出关卡',
-        message: '关卡尚未完成,确定退出?进度不会保存。',
-        confirmText: '确定退出',
+        message: '关卡尚未完成。你可以保存断点后离开,也可以放弃本次关卡进度。',
+        confirmText: '保存离开',
+        secondaryText: '放弃进度',
         cancelText: '继续闯关',
-        variant: 'danger',
-        onConfirm: () => setScreen('map'),
+        variant: 'warning',
+        secondaryVariant: 'danger',
+        onConfirm: () => {
+          void api
+            .saveLevelRun(projectId, run)
+            .then((progress) => {
+              setProgress(progress)
+              pushToast('success', `已保存到第 ${run.taskIndex + 1} 题`)
+              setScreen(target)
+            })
+            .catch((err) => {
+              const message = err instanceof Error ? err.message : '保存进度失败'
+              const hint =
+                message === '未找到'
+                  ? '保存接口未找到，请重启后端服务后再试'
+                  : message
+              pushToast('error', `保存进度失败：${hint}`)
+            })
+        },
+        onSecondary: () => {
+          void api
+            .discardLevelRun(projectId, run.levelId)
+            .then((progress) => {
+              setProgress(progress)
+              setScreen(target)
+            })
+            .catch((err) => {
+              const message = err instanceof Error ? err.message : '放弃进度失败'
+              pushToast('error', `放弃进度失败：${message}`)
+            })
+        },
       })
       return
     }
-    setScreen('map')
-  }, [phase, setScreen, showConfirm])
+    setScreen(target)
+  }, [projectId, pushToast, setProgress, setScreen, showConfirm, snapshot])
 
   const onAnswer = useCallback(
     (correct: boolean, _task: Task) => {
@@ -186,8 +248,11 @@ export function LevelScreen(): JSX.Element {
         <span className="level-bar-title" title={level?.title ?? ''}>
           {phase === 'loading' ? '加载中…' : (level?.title ?? '关卡')}
         </span>
-        <button type="button" className="nes-btn level-exit" onClick={exit}>
+        <button type="button" className="nes-btn level-exit" onClick={() => leaveLevel('map')}>
           退出
+        </button>
+        <button type="button" className="nes-btn level-exit" onClick={() => leaveLevel('home')}>
+          主菜单
         </button>
       </div>
 

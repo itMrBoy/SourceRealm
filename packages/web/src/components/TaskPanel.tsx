@@ -32,14 +32,21 @@ export function TaskPanel({
   onGuideMe,
 }: TaskPanelProps): JSX.Element {
   const phase = useRun((s) => s.phase)
+  const level = useRun((s) => s.level)
   const hearts = useRun((s) => s.hearts)
   const combo = useRun((s) => s.combo)
   const lastCorrect = useRun((s) => s.lastCorrect)
+  const answeredHistory = useRun((s) => s.answeredHistory)
   const startAnswering = useRun((s) => s.startAnswering)
   const nextTask = useRun((s) => s.nextTask)
   const retryTask = useRun((s) => s.retryTask)
   const retryLevel = useRun((s) => s.retryLevel)
   const skipStale = useRun((s) => s.skipStale)
+  const [showPrevious, setShowPrevious] = useState(false)
+
+  const previousTask = taskIndex > 0 ? level?.tasks[taskIndex - 1] : undefined
+  const previousAnswer = answeredHistory.find((a) => a.taskIndex === taskIndex - 1)
+  const canViewPrevious = Boolean(previousTask && previousAnswer)
 
   // 源码已变化:自动跳过(不计分)
   useEffect(() => {
@@ -84,7 +91,28 @@ export function TaskPanel({
           {'❤️'.repeat(Math.max(0, hearts))}
         </span>
         {combo > 1 && <span className="tp-combo blink">连击 x{combo}</span>}
+        {canViewPrevious && (
+          <button
+            type="button"
+            className="nes-btn tp-prev-btn"
+            onClick={() => {
+              click()
+              setShowPrevious(true)
+            }}
+          >
+            上一题
+          </button>
+        )}
       </div>
+
+      {showPrevious && previousTask && previousAnswer && (
+        <PreviousReview
+          task={previousTask}
+          correct={previousAnswer.correct}
+          explanation={previousAnswer.explanation}
+          onClose={() => setShowPrevious(false)}
+        />
+      )}
 
       {stale ? (
         <StaleCard />
@@ -132,6 +160,50 @@ export function TaskPanel({
       ) : null}
     </div>
   )
+}
+
+function PreviousReview({
+  task,
+  correct,
+  explanation,
+  onClose,
+}: {
+  task: Task
+  correct: boolean
+  explanation: string
+  onClose: () => void
+}): JSX.Element {
+  return (
+    <div className="nes-container is-rounded is-dark tp-review">
+      <div className="tp-review-head">
+        <span>上一题回顾</span>
+        <button type="button" className="nes-btn tp-review-close" onClick={onClose}>
+          关闭
+        </button>
+      </div>
+      <p className="tp-review-narrative">{task.narrative}</p>
+      <p className="tp-review-question">{taskPrompt(task)}</p>
+      <p className={correct ? 'tp-review-ok' : 'tp-review-no'}>
+        作答结果:{correct ? '答对' : '答错'}
+      </p>
+      <p className="tp-explanation">{explanation}</p>
+    </div>
+  )
+}
+
+function taskPrompt(task: Task): string {
+  switch (task.type) {
+    case 'quiz':
+      return `问题:${task.question}`
+    case 'treasure-hunt':
+      return `寻宝:${task.instruction}`
+    case 'call-chain':
+      return `调用链:${task.items.map((it) => it.label).join(' → ')}`
+    case 'code-fill':
+      return `填空:${task.ref.file}:${task.ref.startLine}-${task.ref.endLine}`
+    case 'code-type':
+      return `临摹:${task.ref.file}:${task.ref.startLine}-${task.ref.endLine}`
+  }
 }
 
 function StaleCard(): JSX.Element {
@@ -273,4 +345,3 @@ function Failed({
     </div>
   )
 }
-

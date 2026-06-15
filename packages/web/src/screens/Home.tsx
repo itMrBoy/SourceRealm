@@ -49,6 +49,7 @@ export function Home(): JSX.Element {
   const [loadingList, setLoadingList] = useState(true)
   const [path, setPath] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [picking, setPicking] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [provider, setProvider] = useState<ProviderStatus | null>(null)
 
@@ -121,6 +122,24 @@ export function Home(): JSX.Element {
     }
   }
 
+  async function chooseDirectory(): Promise<void> {
+    if (picking || submitting) return
+    setPicking(true)
+    try {
+      const selected = await api.pickDirectory()
+      if (selected) {
+        setPath(selected)
+        pushToast('success', '已选择代码目录,确认后即可开始冒险')
+      } else {
+        pushToast('info', '已取消选择,也可以继续手动输入路径')
+      }
+    } catch (err) {
+      pushToast('warning', `无法打开目录选择器:${(err as Error).message};可继续手动输入路径`)
+    } finally {
+      setPicking(false)
+    }
+  }
+
   return (
     <main className="home">
       <div className="home-hero">
@@ -148,18 +167,28 @@ export function Home(): JSX.Element {
         )}
         <div className="nes-field home-field">
           <label htmlFor="repo-path">仓库路径</label>
-          <input
-            id="repo-path"
-            className="nes-input"
-            type="text"
-            placeholder="/path/to/your/repo"
-            value={path}
-            disabled={submitting}
-            onChange={(e) => setPath(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void startAdventure()
-            }}
-          />
+          <div className="home-path-row">
+            <input
+              id="repo-path"
+              className="nes-input"
+              type="text"
+              placeholder="/path/to/your/repo"
+              value={path}
+              disabled={submitting}
+              onChange={(e) => setPath(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void startAdventure()
+              }}
+            />
+            <button
+              type="button"
+              className="nes-btn home-pick-btn"
+              disabled={submitting || picking}
+              onClick={() => void chooseDirectory()}
+            >
+              {picking ? '选择中…' : '选择目录'}
+            </button>
+          </div>
         </div>
         <button
           type="button"

@@ -1,4 +1,4 @@
-import type { Course, Level, Progress, ProjectMeta, LevelResult } from '@sourcerealm/shared'
+import type { Course, Level, Progress, ProjectMeta, LevelResult, SavedRun } from '@sourcerealm/shared'
 
 const BASE = trimTrailingSlash(import.meta.env.VITE_SOURCEREALM_API_BASE ?? '/api')
 const EVENTS_BASE = trimTrailingSlash(import.meta.env.VITE_SOURCEREALM_EVENTS_BASE ?? BASE)
@@ -11,8 +11,12 @@ function joinUrl(base: string, path: string): string {
   return `${base}${path.startsWith('/') ? path : `/${path}`}`
 }
 
+function apiUrl(path: string): string {
+  return joinUrl(BASE, path)
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(joinUrl(BASE, path), {
+  const res = await fetch(apiUrl(path), {
     ...init,
     headers: {
       ...(init?.body ? { 'content-type': 'application/json' } : {}),
@@ -30,6 +34,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message)
   }
   return (await res.json()) as T
+}
+
+export async function pickDirectory(): Promise<string | null> {
+  const data = await request<{ path: string | null }>('/system/pick-directory', { method: 'POST' })
+  return data.path
 }
 
 export async function importProject(path: string): Promise<{ id: string; name: string }> {
@@ -106,6 +115,37 @@ export async function submitLevel(
     method: 'POST',
     body: JSON.stringify(body),
   })
+}
+
+export async function saveLevelRun(id: string, run: SavedRun): Promise<Progress> {
+  const data = await request<{ progress: Progress }>(`/projects/${id}/progress/level-run`, {
+    method: 'PUT',
+    body: JSON.stringify(run),
+  })
+  return data.progress
+}
+
+export async function discardLevelRun(id: string, levelId: string): Promise<Progress> {
+  const data = await request<{ progress: Progress }>(
+    `/projects/${id}/progress/level-run/${encodeURIComponent(levelId)}`,
+    { method: 'DELETE' },
+  )
+  return data.progress
+}
+
+export function saveLevelRunBestEffort(id: string, run: SavedRun): void {
+  const body = JSON.stringify(run)
+  const url = apiUrl(`/projects/${id}/progress/level-run`)
+  if (navigator.sendBeacon) {
+    const blob = new Blob([body], { type: 'application/json' })
+    if (navigator.sendBeacon(url, blob)) return
+  }
+  void fetch(url, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body,
+    keepalive: true,
+  }).catch(() => undefined)
 }
 
 export async function markFileRead(id: string, file: string): Promise<Progress> {

@@ -3,10 +3,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import cors from '@fastify/cors'
 import fastifyStatic from '@fastify/static'
-import Fastify, { type FastifyInstance } from 'fastify'
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import {
   LevelResultSchema,
+  SavedRunSchema,
   applyLevelResult,
   emptyProgress,
   type Progress,
@@ -17,10 +18,13 @@ import { detectProviderMode, selectProvider, type LLMProvider } from './provider
 import { RepoScanner } from './scanner.js'
 import { ProjectStore, projectIdFor } from './store.js'
 import { CourseUpdater, checkForUpdates, type UpdateEvent } from './updater.js'
+import { pickDirectory, type DirectoryPicker } from './directory-picker.js'
 
 export interface AppOptions {
   /** 测试注入;缺省时首次导入懒探测 claude CLI / API key */
   provider?: LLMProvider
+  /** 测试注入;缺省时打开系统目录选择器 */
+  directoryPicker?: DirectoryPicker
   /**
    * web 构建产物目录;缺省自动探测 packages/web/dist。
    * 传 null 可显式关闭静态托管(测试用)。
@@ -34,6 +38,7 @@ function defaultWebDist(): string {
 }
 
 const ImportBodySchema = z.object({ path: z.string().min(1) })
+const LevelRunBodySchema = SavedRunSchema
 const LevelDoneBodySchema = z.object({
   levelId: z.string().min(1),
   result: LevelResultSchema,
@@ -53,6 +58,7 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
   // 本地工具,放开 CORS 以便 vite dev(不同源)直接访问 API
   await app.register(cors, { origin: true })
   let provider = opts.provider ?? null
+  const directoryPicker = opts.directoryPicker ?? pickDirectory
   /**
    * projectId → 运行中的生成器/更新器(SSE 订阅 + 防重复启动)。
    * LevelGenerator 与 CourseUpdater 都是 EventEmitter 且 emit 'event',接口统一。
@@ -117,6 +123,14 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
     } catch (err) {
       const apiInfo = mode === 'anthropic-api' ? anthropicApiBaseInfo() : {}
       return { mode, available: false, error: String((err as Error).message), ...apiInfo }
+    }
+  })
+
+  app.post('/api/system/pick-directory', async (_req, reply) => {
+    try {
+      return { path: await directoryPicker() }
+    } catch (err) {
+      return reply.code(500).send({ error: String((err as Error).message) })
     }
   })
 
@@ -264,12 +278,51 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
     const prev = progress.completedLevels[body.data.levelId]
     const { progress: applied, newBadges } = applyLevelResult(progress, course, body.data)
     // 重复通关不重复累计 XP:总 XP 只补发比上次更高的差额(允许刷成绩,防刷分)
-    const next = prev
+    const appliedWithXp = prev
       ? { ...applied, xp: progress.xp + Math.max(0, body.data.result.xp - prev.xp) }
       : applied
+    const levelRuns = { ...(appliedWithXp.levelRuns ?? {}) }
+    delete levelRuns[body.data.levelId]
+    const next = { ...appliedWithXp, levelRuns }
     await store.writeProgress(next)
     return { progress: next, newBadges }
   })
+
+  async function saveLevelRun(req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const body = LevelRunBodySchema.safeParse(req.body)
+    if (!body.success) return reply.code(400).send({ error: body.error.message })
+    const store = new ProjectStore(req.params.id)
+    const progress: Progress = (await store.readProgress()) ?? emptyProgress()
+    if (progress.completedLevels[body.data.levelId]) {
+      const levelRuns = { ...(progress.levelRuns ?? {}) }
+      delete levelRuns[body.data.levelId]
+      progress.levelRuns = levelRuns
+    } else {
+      progress.levelRuns = { ...(progress.levelRuns ?? {}), [body.data.levelId]: body.data }
+    }
+    await store.writeProgress(progress)
+    return { progress }
+  }
+
+  // 保存未通关的关卡内断点。POST 兼容 sendBeacon,PUT 供常规前端请求使用。
+  app.put<{ Params: { id: string } }>('/api/projects/:id/progress/level-run', saveLevelRun)
+  app.post<{ Params: { id: string } }>('/api/projects/:id/progress/level-run', saveLevelRun)
+
+  // 放弃某一关的未通关断点
+  app.delete<{ Params: { id: string; levelId: string } }>(
+    '/api/projects/:id/progress/level-run/:levelId',
+    async (req) => {
+      const store = new ProjectStore(req.params.id)
+      const progress: Progress = (await store.readProgress()) ?? emptyProgress()
+      if (progress.levelRuns?.[req.params.levelId]) {
+        const levelRuns = { ...(progress.levelRuns ?? {}) }
+        delete levelRuns[req.params.levelId]
+        progress.levelRuns = levelRuns
+        await store.writeProgress(progress)
+      }
+      return { progress }
+    },
+  )
 
   // 记录文件阅读(考古学家徽章用)
   app.post<{ Params: { id: string } }>('/api/projects/:id/progress/file-read', async (req, reply) => {

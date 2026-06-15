@@ -125,13 +125,42 @@ export const LevelResultSchema = z.object({
 })
 export type LevelResult = z.infer<typeof LevelResultSchema>
 
+export const SavedAnswerSchema = z.object({
+  taskIndex: z.number().int().nonnegative(),
+  taskId: z.string().min(1),
+  correct: z.boolean(),
+  explanation: z.string(),
+})
+export type SavedAnswer = z.infer<typeof SavedAnswerSchema>
+
+export const SavedRunPhaseSchema = z.enum(['narrative', 'answering', 'feedback', 'failed'])
+export type SavedRunPhase = z.infer<typeof SavedRunPhaseSchema>
+
+export const SavedRunSchema = z.object({
+  levelId: z.string().min(1),
+  taskIndex: z.number().int().nonnegative(),
+  hearts: z.number().int().nonnegative(),
+  combo: z.number().int().nonnegative(),
+  maxCombo: z.number().int().nonnegative(),
+  xpEarned: z.number().int().nonnegative(),
+  wrongAnswers: z.number().int().nonnegative(),
+  totalAnswers: z.number().int().nonnegative(),
+  scoredTaskCount: z.number().int().nonnegative(),
+  phase: SavedRunPhaseSchema,
+  lastCorrect: z.boolean().nullable(),
+  answeredHistory: z.array(SavedAnswerSchema),
+  updatedAt: z.string(),
+})
+export type SavedRun = z.infer<typeof SavedRunSchema>
+
 export const ProgressSchema = z.object({
   xp: z.number().int().nonnegative(),
   completedLevels: z.record(z.string(), LevelResultSchema),
   badges: z.array(z.string()),
   filesRead: z.array(z.string()),
+  levelRuns: z.record(z.string(), SavedRunSchema).default({}),
 })
-export type Progress = z.infer<typeof ProgressSchema>
+export type Progress = z.output<typeof ProgressSchema>
 
 export const GenerationStatusSchema = z.enum(['idle', 'mapping', 'generating', 'done', 'error'])
 
