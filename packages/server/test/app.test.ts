@@ -153,10 +153,21 @@ describe('HTTP API', () => {
 
     const done = (await a.inject({
       method: 'POST', url: `/api/projects/${id}/progress/level`,
-      payload: { levelId: 'lv-auth', result: { rating: 'S', accuracy: 1, maxCombo: 2, xp: 35 }, taskCount: 2 },
+      payload: {
+        levelId: 'lv-auth',
+        result: {
+          rating: 'S', accuracy: 1, maxCombo: 2, xp: 35,
+          answeredHistory: [{ taskIndex: 0, taskId: 't1', correct: true, explanation: 'e' }],
+        },
+        taskCount: 2,
+      },
     })).json()
     expect(done.progress.xp).toBe(35)
     expect(done.newBadges).toContain('first-level')
+    // answeredHistory 随完成记录持久化,供再次进入只读回顾
+    expect(done.progress.completedLevels['lv-auth'].answeredHistory).toHaveLength(1)
+    const afterDone = (await a.inject({ method: 'GET', url: `/api/projects/${id}` })).json()
+    expect(afterDone.progress.completedLevels['lv-auth'].answeredHistory[0].taskId).toBe('t1')
 
     const read = (await a.inject({
       method: 'POST', url: `/api/projects/${id}/progress/file-read`, payload: { file: 'src/auth.js' },

@@ -7,9 +7,50 @@ export function judgeQuiz(answer: number[], selected: number[]): boolean {
   return selected.every((i) => want.has(i)) && new Set(selected).size === answer.length
 }
 
-/** treasure-hunt:点击位置落在目标文件的行范围内 */
-export function judgeTreasureHunt(target: CodeRef, pick: { file: string; line: number }): boolean {
-  return pick.file === target.file && pick.line >= target.startLine && pick.line <= target.endLine
+/**
+ * treasure-hunt 智能容差判定:
+ * - 忽略空行;markdown(.md) 文件里 `#` 标题行视为可选
+ * - 核心内容行必须全选,且不得越界
+ * - targetText 为目标区间 startLine..endLine 的逐行文本(可空,空则退化为严格全区间)
+ * 返回 correct(是否答对) 与 overlap(选区是否与目标有交集,用于决定是否扣心)
+ */
+export function judgeTreasureHunt(
+  target: CodeRef,
+  selected: { file: string; lines: number[] },
+  targetText: string[],
+): { correct: boolean; overlap: boolean } {
+  const inRange = (line: number): boolean => line >= target.startLine && line <= target.endLine
+  const sameFile = selected.file === target.file
+  if (!sameFile) return { correct: false, overlap: false }
+  const overlap = selected.lines.some(inRange)
+
+  const md = target.file.toLowerCase().endsWith('.md')
+  const isBlank = (text: string): boolean => text.trim() === ''
+  const isHeading = (text: string): boolean => md && /^\s*#{1,6}\s/.test(text)
+
+  // 核心内容行:区间内既非空行也非(md)标题行;边界标题/空行可选
+  const nonBlank: number[] = []
+  let required: number[] = []
+  if (targetText.length > 0) {
+    for (let i = 0; i < targetText.length; i++) {
+      const line = target.startLine + i
+      const text = targetText[i] ?? ''
+      if (isBlank(text)) continue
+      nonBlank.push(line)
+      if (!isHeading(text)) required.push(line)
+    }
+    // 整段全是标题/空行时回退为非空行,避免空 required 致任意选都对
+    if (required.length === 0) required = nonBlank
+  } else {
+    // 内容未取到:安全退化为严格全区间
+    for (let line = target.startLine; line <= target.endLine; line++) required.push(line)
+  }
+
+  const picked = new Set(selected.lines)
+  const allInRange = selected.lines.every(inRange)
+  const coversRequired = required.every((line) => picked.has(line))
+  const correct = picked.size > 0 && allInRange && coversRequired
+  return { correct, overlap }
 }
 
 /** call-chain:顺序完全一致 */

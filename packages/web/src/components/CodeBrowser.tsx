@@ -18,6 +18,8 @@ interface CodeBrowserProps {
   /** 本关相关文件优先(置顶并标 ★) */
   files: string[]
   onLineClick?: (file: string, line: number) => void
+  /** 寻宝:当前已勾选的行(渲染为已选样式,区别于 highlightRef 的「带我去附近」高亮) */
+  selectedLines?: number[]
   highlightRef?: HighlightRef | null
   /** 受控当前文件(可选);未提供时内部自管 */
   activeFile?: string | null
@@ -202,6 +204,7 @@ export function CodeBrowser({
   projectId,
   files,
   onLineClick,
+  selectedLines,
   highlightRef,
   activeFile,
   onSelectFile,
@@ -352,6 +355,8 @@ export function CodeBrowser({
     line >= highlightRef.startLine &&
     line <= highlightRef.endLine
 
+  const isSelected = (line: number): boolean => (selectedLines ?? []).includes(line)
+
   useEffect(() => {
     if (currentFile) revealInTree(currentFile)
     // fileTree changes when the async full repo tree arrives; keep the current file visible then.
@@ -500,8 +505,8 @@ export function CodeBrowser({
                   key={line}
                   data-line={line}
                   className={`cb-line ${inHighlight(line) ? 'line-highlight' : ''} ${
-                    onLineClick ? 'cb-line--clickable' : ''
-                  }`}
+                    isSelected(line) ? 'cb-line--selected' : ''
+                  } ${onLineClick ? 'cb-line--clickable' : ''}`}
                   onClick={onLineClick ? () => onLineClick(currentFile, line) : undefined}
                 >
                   <span className="cb-ln">{line}</span>

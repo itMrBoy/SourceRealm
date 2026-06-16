@@ -48,6 +48,10 @@ export function LevelScreen(): JSX.Element {
   const [highlightRef, setHighlightRef] = useState<HighlightRef | null>(null)
   // 寻宝任务当前题答错次数(每题重置)
   const [treasureWrong, setTreasureWrong] = useState(0)
+  // 寻宝任务当前已勾选的行(scoped 到当前文件,提交时精确匹配)
+  const [selectedLines, setSelectedLines] = useState<number[]>([])
+  // 当前寻宝题目标区间的逐行文本(供智能容差判定:识别空行/标题)
+  const [treasureTargetText, setTreasureTargetText] = useState<string[]>([])
 
   // 三栏宽度:文件栏(px)与左侧整体占比(%),可拖拽调整
   const gridRef = useRef<HTMLDivElement>(null)
@@ -126,6 +130,33 @@ export function LevelScreen(): JSX.Element {
     setTreasureWrong(0)
     setHighlightRef(null)
   }, [task])
+
+  // 寻宝勾选清空:进入新阶段(含重试回到 answering)或切换文件时,避免残留旧选/跨文件行号串选
+  useEffect(() => {
+    setSelectedLines([])
+  }, [phase, activeFile])
+
+  // 寻宝:预取目标区间逐行文本,供智能容差判定(忽略空行、md 标题可选)
+  useEffect(() => {
+    if (!projectId || !task || task.type !== 'treasure-hunt') {
+      setTreasureTargetText([])
+      return
+    }
+    let alive = true
+    const t = task.target
+    void api
+      .getFile(projectId, t.file)
+      .then((content) => {
+        if (!alive) return
+        setTreasureTargetText(content.split('\n').slice(t.startLine - 1, t.endLine))
+      })
+      .catch(() => {
+        if (alive) setTreasureTargetText([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [projectId, task])
 
   // 全部任务完成 → 自动结算(提交进度一次)
   useEffect(() => {
@@ -226,17 +257,42 @@ export function LevelScreen(): JSX.Element {
     [answer],
   )
 
-  // 寻宝:浏览器行点击 → 判定
+  // 寻宝:浏览器行点击 → 切换勾选(scoped 到当前文件,提交时才精确判定)
   const onLineClick = useCallback(
     (file: string, line: number) => {
       if (!task || task.type !== 'treasure-hunt') return
       if (phase !== 'answering') return
-      const correct = judgeTreasureHunt(task.target, { file, line })
-      if (!correct) setTreasureWrong((n) => n + 1)
-      answer(correct, 'treasure-hunt')
+      if (file !== activeFile) return
+      setSelectedLines((prev) =>
+        prev.includes(line) ? prev.filter((l) => l !== line) : [...prev, line],
+      )
     },
-    [task, phase, answer],
+    [task, phase, activeFile],
   )
+
+  // 寻宝:提交已勾选行 → 智能容差判定。对则推进;错且有交集只提示不扣心;无交集提示并扣心
+  const onSubmitTreasure = useCallback(() => {
+    if (!task || task.type !== 'treasure-hunt') return
+    if (phase !== 'answering' || selectedLines.length === 0) return
+    const { correct, overlap } = judgeTreasureHunt(
+      task.target,
+      { file: activeFile ?? task.target.file, lines: selectedLines },
+      treasureTargetText,
+    )
+    if (correct) {
+      answer(true, 'treasure-hunt')
+      return
+    }
+    setTreasureWrong((n) => n + 1)
+    if (overlap) {
+      // 有交集:不扣心(不调用 answer → 停留 answering,选区保留可微调重交)
+      pushToast('warning', '接近了!内容行要全选,空行、标题可不选,别选到范围外,调整后再提交。')
+    } else {
+      // 无交集/错文件:提示并扣心(走 feedback/失败流程)
+      pushToast('warning', '这片区域不对哦,换个地方找找。')
+      answer(false, 'treasure-hunt')
+    }
+  }, [task, phase, activeFile, selectedLines, treasureTargetText, answer, pushToast])
 
   // 寻宝重试本题时重置高亮(保留错误计数以便逐步给提示)
   const onGuideMe = useCallback(() => {
@@ -251,9 +307,10 @@ export function LevelScreen(): JSX.Element {
   }, [task])
 
   const isTreasure = task?.type === 'treasure-hunt'
+  // 仅答题阶段可点选;回顾(review)等其它阶段不接受点击,去掉可点光标
   const lineClickHandler = useMemo(
-    () => (isTreasure ? onLineClick : undefined),
-    [isTreasure, onLineClick],
+    () => (isTreasure && phase === 'answering' ? onLineClick : undefined),
+    [isTreasure, phase, onLineClick],
   )
 
   if (!projectId || !levelId) {
@@ -302,6 +359,7 @@ export function LevelScreen(): JSX.Element {
               activeFile={activeFile}
               onSelectFile={setActiveFile}
               onLineClick={lineClickHandler}
+              selectedLines={isTreasure && phase === 'answering' ? selectedLines : undefined}
               highlightRef={highlightRef}
               railWidth={railWidth}
               onDragRail={onDragRail}
@@ -318,6 +376,8 @@ export function LevelScreen(): JSX.Element {
                 onAnswer={onAnswer}
                 onBackToMap={backToMap}
                 treasureWrongCount={treasureWrong}
+                treasureSelectedCount={selectedLines.length}
+                onSubmitTreasure={onSubmitTreasure}
                 onGuideMe={onGuideMe}
               />
             )}

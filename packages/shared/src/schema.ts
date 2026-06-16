@@ -117,14 +117,6 @@ export type Level = z.infer<typeof LevelSchema>
 export const RatingSchema = z.enum(['S', 'A', 'B', 'C'])
 export type Rating = z.infer<typeof RatingSchema>
 
-export const LevelResultSchema = z.object({
-  rating: RatingSchema,
-  accuracy: z.number().min(0).max(1),
-  maxCombo: z.number().int().nonnegative(),
-  xp: z.number().int().nonnegative(),
-})
-export type LevelResult = z.infer<typeof LevelResultSchema>
-
 export const SavedAnswerSchema = z.object({
   taskIndex: z.number().int().nonnegative(),
   taskId: z.string().min(1),
@@ -132,6 +124,16 @@ export const SavedAnswerSchema = z.object({
   explanation: z.string(),
 })
 export type SavedAnswer = z.infer<typeof SavedAnswerSchema>
+
+export const LevelResultSchema = z.object({
+  rating: RatingSchema,
+  accuracy: z.number().min(0).max(1),
+  maxCombo: z.number().int().nonnegative(),
+  xp: z.number().int().nonnegative(),
+  // 通关后用于只读回顾的逐题作答记录;旧存档可能缺省(向后兼容)
+  answeredHistory: z.array(SavedAnswerSchema).optional(),
+})
+export type LevelResult = z.infer<typeof LevelResultSchema>
 
 export const SavedRunPhaseSchema = z.enum(['narrative', 'answering', 'feedback', 'failed'])
 export type SavedRunPhase = z.infer<typeof SavedRunPhaseSchema>

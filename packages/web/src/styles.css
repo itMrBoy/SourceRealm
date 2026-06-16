@@ -1112,6 +1112,16 @@ body.col-resizing {
   box-shadow: inset 3px 0 0 var(--cq-gold);
 }
 
+/* 寻宝已勾选行:青色填充,区别于「带我去附近」的金色高亮 */
+.cb-line--selected {
+  background-color: rgba(74, 214, 200, 0.22);
+  box-shadow: inset 3px 0 0 var(--cq-accent);
+}
+
+.cb-line--selected:hover {
+  background-color: rgba(74, 214, 200, 0.3);
+}
+
 /* ---------- TaskPanel(任务面板) ---------- */
 .tp {
   display: flex;

@@ -264,7 +264,7 @@ function LevelNode({
           type="button"
           className="map-node node-done"
           onClick={onPlay}
-          title={`已通关(${rating ?? '?'})— 点击重玩:${level.title}`}
+          title={`已通关(${rating ?? '?'})— 点击回顾:${level.title}`}
         >
           {staleBadge}
           <span className="node-icon">✓</span>

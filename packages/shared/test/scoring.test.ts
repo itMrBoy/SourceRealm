@@ -63,4 +63,15 @@ describe('applyLevelResult', () => {
     const r3 = applyLevelResult(r2.progress, course, { levelId: 'lv2', result: { rating: 'A', accuracy: 0.9, maxCombo: 1, xp: 10 }, taskCount: 4 })
     expect(r3.newBadges).toHaveLength(0)
   })
+  it('result 含 answeredHistory 时写入完成记录,缺省时容错', () => {
+    const history = [{ taskIndex: 0, taskId: 't1', correct: true, explanation: 'e' }]
+    const withH = applyLevelResult(emptyProgress(), course, {
+      levelId: 'lv1', result: { rating: 'A', accuracy: 0.9, maxCombo: 1, xp: 10, answeredHistory: history }, taskCount: 4,
+    })
+    expect(withH.progress.completedLevels.lv1.answeredHistory).toEqual(history)
+    const without = applyLevelResult(emptyProgress(), course, {
+      levelId: 'lv1', result: { rating: 'A', accuracy: 0.9, maxCombo: 1, xp: 10 }, taskCount: 4,
+    })
+    expect(without.progress.completedLevels.lv1.answeredHistory).toBeUndefined()
+  })
 })

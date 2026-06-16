@@ -11,6 +11,8 @@ export type RunPhase =
   | 'level-done'
   | 'settled'
   | 'failed'
+  // 已通关关卡再次进入:只读回顾(逐题翻看题面/对错/讲解)
+  | 'review'
 
 const START_HEARTS = 3
 
@@ -48,6 +50,8 @@ export interface RunState {
   snapshot: () => SavedRun | null
   startAnswering: () => void
   answer: (correct: boolean, taskType: TaskType) => void
+  /** 回顾态翻页:仅 clamp taskIndex,不改 phase、不触发结算 */
+  reviewGoTo: (index: number) => void
   nextTask: () => void
   retryTask: () => void
   retryLevel: () => void
@@ -88,7 +92,9 @@ export const useRun = create<RunState>((set, get) => ({
     set({ ...freshState(), phase: 'loading' })
     try {
       const { level, freshness } = await api.getLevel(projectId, levelId)
-      const saved = useStore.getState().progress.levelRuns?.[levelId]
+      const progress = useStore.getState().progress
+      const saved = progress.levelRuns?.[levelId]
+      const completed = progress.completedLevels?.[levelId]
       if (saved && saved.taskIndex < level.tasks.length) {
         set({
           level,
@@ -104,6 +110,15 @@ export const useRun = create<RunState>((set, get) => ({
           phase: saved.phase,
           lastCorrect: saved.lastCorrect,
           answeredHistory: saved.answeredHistory,
+        })
+      } else if (completed) {
+        // 已通关且无未完成断点:进入只读回顾,填充历史作答记录(旧存档可能为空)
+        set({
+          level,
+          freshness,
+          taskIndex: 0,
+          phase: 'review',
+          answeredHistory: completed.answeredHistory ?? [],
         })
       } else {
         set({ level, freshness, phase: 'narrative' })
@@ -175,6 +190,14 @@ export const useRun = create<RunState>((set, get) => ({
     }
   },
 
+  reviewGoTo(index) {
+    const s = get()
+    if (!s.level) return
+    const max = s.level.tasks.length - 1
+    const clamped = Math.min(Math.max(index, 0), max)
+    set({ taskIndex: clamped })
+  },
+
   nextTask() {
     const s = get()
     if (!s.level) return
@@ -228,7 +251,14 @@ export const useRun = create<RunState>((set, get) => ({
     try {
       const { progress, newBadges } = await api.submitLevel(projectId, {
         levelId,
-        result: { rating, accuracy, maxCombo: s.maxCombo, xp: allSkipped ? 0 : s.xpEarned },
+        result: {
+          rating,
+          accuracy,
+          maxCombo: s.maxCombo,
+          xp: allSkipped ? 0 : s.xpEarned,
+          // 通关后持久化逐题作答记录,供再次进入时只读回顾
+          answeredHistory: s.answeredHistory,
+        },
         taskCount,
       })
       useStore.getState().setProgress(progress)

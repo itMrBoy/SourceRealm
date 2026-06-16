@@ -10,11 +10,46 @@ describe('judgeQuiz', () => {
 })
 
 describe('judgeTreasureHunt', () => {
-  const target = { file: 'src/auth.js', startLine: 2, endLine: 4, contentHash: '' }
-  it('同文件且行号落在范围内即命中', () => {
-    expect(judgeTreasureHunt(target, { file: 'src/auth.js', line: 3 })).toBe(true)
-    expect(judgeTreasureHunt(target, { file: 'src/auth.js', line: 5 })).toBe(false)
-    expect(judgeTreasureHunt(target, { file: 'src/other.js', line: 3 })).toBe(false)
+  // md 目标 28-36:28 标题、29 空行、30-36 七条内容
+  const mdTarget = { file: 'README.md', startLine: 28, endLine: 36, contentHash: '' }
+  const mdText = ['## 公开接口', '', '- a', '- b', '- c', '- d', '- e', '- f', '- g']
+
+  it('选全内容行即对:忽略空行、md 标题可选(连标题/空行一起选也对)', () => {
+    expect(judgeTreasureHunt(mdTarget, { file: 'README.md', lines: [30, 31, 32, 33, 34, 35, 36] }, mdText)).toEqual({
+      correct: true,
+      overlap: true,
+    })
+    expect(
+      judgeTreasureHunt(mdTarget, { file: 'README.md', lines: [28, 29, 30, 31, 32, 33, 34, 35, 36] }, mdText).correct,
+    ).toBe(true)
+  })
+  it('少选内容行算错,但与目标有交集 overlap=true', () => {
+    const v = judgeTreasureHunt(mdTarget, { file: 'README.md', lines: [30, 31, 32] }, mdText)
+    expect(v.correct).toBe(false)
+    expect(v.overlap).toBe(true)
+  })
+  it('越界算错', () => {
+    expect(
+      judgeTreasureHunt(mdTarget, { file: 'README.md', lines: [30, 31, 32, 33, 34, 35, 36, 37] }, mdText).correct,
+    ).toBe(false)
+  })
+  it('完全不相干/错文件 overlap=false', () => {
+    expect(judgeTreasureHunt(mdTarget, { file: 'README.md', lines: [50, 51] }, mdText).overlap).toBe(false)
+    expect(judgeTreasureHunt(mdTarget, { file: 'other.md', lines: [30] }, mdText).overlap).toBe(false)
+  })
+  it('非 md 文件 # 注释不豁免,空行可不选', () => {
+    const py = { file: 'a.py', startLine: 1, endLine: 3, contentHash: '' }
+    const pyText = ['# comment', 'x = 1', '']
+    expect(judgeTreasureHunt(py, { file: 'a.py', lines: [1, 2] }, pyText).correct).toBe(true)
+    expect(judgeTreasureHunt(py, { file: 'a.py', lines: [2] }, pyText).correct).toBe(false)
+  })
+  it('targetText 为空时退化为严格全区间', () => {
+    expect(
+      judgeTreasureHunt(mdTarget, { file: 'README.md', lines: [28, 29, 30, 31, 32, 33, 34, 35, 36] }, []).correct,
+    ).toBe(true)
+    expect(judgeTreasureHunt(mdTarget, { file: 'README.md', lines: [30, 31, 32, 33, 34, 35, 36] }, []).correct).toBe(
+      false,
+    )
   })
 })
 

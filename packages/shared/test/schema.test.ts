@@ -53,6 +53,23 @@ describe('Course/Level/Progress', () => {
     const parsed = ProgressSchema.parse(progress)
     expect(parsed.xp).toBe(10)
     expect(parsed.levelRuns).toEqual({})
+    // 旧存档完成记录无 answeredHistory 字段,仍可解析(向后兼容)
+    expect(parsed.completedLevels.lv1.answeredHistory).toBeUndefined()
+  })
+
+  it('完成记录可携带 answeredHistory 供只读回顾', () => {
+    const progress = {
+      xp: 10,
+      completedLevels: {
+        lv1: {
+          rating: 'S', accuracy: 1, maxCombo: 3, xp: 10,
+          answeredHistory: [{ taskIndex: 0, taskId: 't1', correct: true, explanation: 'e' }],
+        },
+      },
+      badges: [], filesRead: [], levelRuns: {},
+    }
+    const parsed = ProgressSchema.parse(progress)
+    expect(parsed.completedLevels.lv1.answeredHistory).toHaveLength(1)
   })
 
   it('解析关卡断点', () => {

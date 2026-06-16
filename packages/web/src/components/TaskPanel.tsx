@@ -18,6 +18,10 @@ interface TaskPanelProps {
   onBackToMap: () => void
   /** 寻宝:当前题已答错次数 */
   treasureWrongCount: number
+  /** 寻宝:当前已勾选行数 */
+  treasureSelectedCount: number
+  /** 寻宝:提交已勾选行 */
+  onSubmitTreasure: () => void
   onGuideMe: () => void
 }
 
@@ -29,6 +33,8 @@ export function TaskPanel({
   onAnswer,
   onBackToMap,
   treasureWrongCount,
+  treasureSelectedCount,
+  onSubmitTreasure,
   onGuideMe,
 }: TaskPanelProps): JSX.Element {
   const phase = useRun((s) => s.phase)
@@ -41,6 +47,7 @@ export function TaskPanel({
   const nextTask = useRun((s) => s.nextTask)
   const retryTask = useRun((s) => s.retryTask)
   const retryLevel = useRun((s) => s.retryLevel)
+  const reviewGoTo = useRun((s) => s.reviewGoTo)
   const skipStale = useRun((s) => s.skipStale)
   // 正在回顾的题号(null 表示未打开回顾);可在 0..taskIndex-1 间双向翻页
   const [reviewIndex, setReviewIndex] = useState<number | null>(null)
@@ -86,6 +93,34 @@ export function TaskPanel({
   const click = () => {
     unlockAudio()
     playClick()
+  }
+
+  // 已通关再次进入:只读回顾走查(逐题翻看,可重新挑战/返回地图)
+  if (phase === 'review') {
+    return (
+      <ReviewWalkthrough
+        task={task}
+        taskIndex={taskIndex}
+        taskCount={taskCount}
+        answer={answeredHistory.find((a) => a.taskIndex === taskIndex)}
+        onPrev={() => {
+          click()
+          reviewGoTo(taskIndex - 1)
+        }}
+        onNext={() => {
+          click()
+          reviewGoTo(taskIndex + 1)
+        }}
+        onRetry={() => {
+          click()
+          retryLevel()
+        }}
+        onBackToMap={() => {
+          click()
+          onBackToMap()
+        }}
+      />
+    )
   }
 
   return (
@@ -147,6 +182,8 @@ export function TaskPanel({
           task={task}
           onAnswer={(correct) => onAnswer(correct, task)}
           treasureWrongCount={treasureWrongCount}
+          treasureSelectedCount={treasureSelectedCount}
+          onSubmitTreasure={onSubmitTreasure}
           onGuideMe={onGuideMe}
         />
       ) : phase === 'feedback' ? (
@@ -234,6 +271,71 @@ function PreviousReview({
   )
 }
 
+function ReviewWalkthrough({
+  task,
+  taskIndex,
+  taskCount,
+  answer,
+  onPrev,
+  onNext,
+  onRetry,
+  onBackToMap,
+}: {
+  task: Task
+  taskIndex: number
+  taskCount: number
+  answer: SavedAnswer | undefined
+  onPrev: () => void
+  onNext: () => void
+  onRetry: () => void
+  onBackToMap: () => void
+}): JSX.Element {
+  // 旧存档/跳过的题没有作答记录,讲解回退到题目自带 explanation
+  const explanation = answer?.explanation ?? task.explanation
+  return (
+    <div className="tp tp-review-mode">
+      <div className="tp-status">
+        <span className="tp-progress">
+          回顾 {taskIndex + 1}/{taskCount}
+        </span>
+      </div>
+      <div className="nes-container is-rounded is-dark tp-review">
+        <p className="tp-review-narrative">{task.narrative}</p>
+        <p className="tp-review-question">{taskPrompt(task)}</p>
+        {answer ? (
+          <p className={answer.correct ? 'tp-review-ok' : 'tp-review-no'}>
+            作答结果:{answer.correct ? '答对' : '答错'}
+          </p>
+        ) : (
+          <p className="tp-review-skip">（无逐题记录，仅回顾题目与讲解）</p>
+        )}
+        <p className="tp-explanation">{explanation}</p>
+      </div>
+      <div className="tp-review-nav">
+        <button type="button" className="nes-btn" disabled={taskIndex === 0} onClick={onPrev}>
+          ← 上一题
+        </button>
+        <button
+          type="button"
+          className="nes-btn"
+          disabled={taskIndex >= taskCount - 1}
+          onClick={onNext}
+        >
+          下一题 →
+        </button>
+      </div>
+      <div className="tp-actions-row">
+        <button type="button" className="nes-btn is-primary" onClick={onRetry}>
+          重新挑战
+        </button>
+        <button type="button" className="nes-btn" onClick={onBackToMap}>
+          返回地图
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function taskPrompt(task: Task): string {
   switch (task.type) {
     case 'quiz':
@@ -300,11 +402,15 @@ function Answering({
   task,
   onAnswer,
   treasureWrongCount,
+  treasureSelectedCount,
+  onSubmitTreasure,
   onGuideMe,
 }: {
   task: Task
   onAnswer: (correct: boolean) => void
   treasureWrongCount: number
+  treasureSelectedCount: number
+  onSubmitTreasure: () => void
   onGuideMe: () => void
 }): JSX.Element {
   switch (task.type) {
@@ -315,6 +421,8 @@ function Answering({
         <TreasureHuntTask
           task={task}
           wrongCount={treasureWrongCount}
+          selectedCount={treasureSelectedCount}
+          onSubmit={onSubmitTreasure}
           onGuideMe={onGuideMe}
         />
       )
