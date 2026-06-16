@@ -150,12 +150,13 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
     const store = new ProjectStore(req.params.id)
     const meta = await store.readMeta()
     if (!meta) return reply.code(404).send({ error: '项目不存在' })
+    if (generators.has(store.id)) return { ok: true }
     const scanner = await RepoScanner.open(meta.path)
-    // 把 failed 的关卡重置为 pending 以便重试
+    // 把未完成的关卡重置为 pending 以便重试;ready 关卡继续复用
     const course = await store.readCourse()
     if (course) {
       for (const ch of course.chapters)
-        for (const lv of ch.levels) if (lv.status === 'failed') lv.status = 'pending'
+        for (const lv of ch.levels) if (lv.status === 'failed' || lv.status === 'generating') lv.status = 'pending'
       await store.writeCourse(course)
     }
     await store.writeMeta({ ...meta, generation: { status: 'generating' } })

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import TreeView, { type INode, type NodeId } from 'react-accessible-treeview'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { codeToHtml } from 'shiki'
 import * as api from '../api.js'
 import { useStore } from '../store.js'
@@ -60,6 +62,7 @@ const EXT_LANG: Record<string, string> = {
 }
 
 type FileTreeKind = 'root' | 'directory' | 'file'
+type CodeViewMode = 'source' | 'preview'
 
 interface FileTreeMeta {
   kind: FileTreeKind
@@ -173,6 +176,10 @@ function langOf(file: string): string {
   return EXT_LANG[ext] ?? 'txt'
 }
 
+function isMarkdownFile(file: string | null): boolean {
+  return file?.toLowerCase().endsWith('.md') ?? false
+}
+
 // 一次会话内已上报 file-read 的文件,避免重复 POST
 const readReported = new Set<string>()
 
@@ -210,9 +217,11 @@ export function CodeBrowser({
   const currentFile = activeFile ?? internalFile
 
   const [lines, setLines] = useState<string[]>([])
+  const [rawContent, setRawContent] = useState('')
   const [loadingCode, setLoadingCode] = useState(false)
   const [codeError, setCodeError] = useState<string | null>(null)
   const [expandedIds, setExpandedIds] = useState<NodeId[]>([])
+  const [viewMode, setViewMode] = useState<CodeViewMode>('source')
 
   const levelFiles = useMemo(() => files.filter(Boolean), [files])
   const levelFileSet = useMemo(
@@ -227,6 +236,8 @@ export function CodeBrowser({
   const selectedTreeId = currentFile
     ? fileTree.fileToId.get(normalizeRepoPath(currentFile))
     : undefined
+  const canPreviewMarkdown = isMarkdownFile(currentFile)
+  const effectiveViewMode: CodeViewMode = canPreviewMarkdown ? viewMode : 'source'
 
   const codeAreaRef = useRef<HTMLDivElement>(null)
   const railRef = useRef<HTMLElement>(null)
@@ -259,11 +270,13 @@ export function CodeBrowser({
   useEffect(() => {
     if (!currentFile) {
       setLines([])
+      setRawContent('')
       return
     }
     let cancelled = false
     setLoadingCode(true)
     setCodeError(null)
+    setViewMode('source')
     ;(async () => {
       try {
         const content = await api.getFile(projectId, currentFile)
@@ -271,10 +284,14 @@ export function CodeBrowser({
           lang: langOf(currentFile),
           theme: 'github-dark',
         })
-        if (!cancelled) setLines(splitLines(html))
+        if (!cancelled) {
+          setRawContent(content)
+          setLines(splitLines(html))
+        }
       } catch (err) {
         if (!cancelled) {
           setCodeError(err instanceof Error ? err.message : '文件加载失败')
+          setRawContent('')
           setLines([])
         }
       } finally {
@@ -429,11 +446,52 @@ export function CodeBrowser({
 
       {onDragRail && <SplitHandle onDrag={onDragRail} />}
 
-      <div className="cb-code code-font" ref={codeAreaRef}>
+      <div
+        className={`cb-code code-font ${canPreviewMarkdown ? 'cb-code--with-toggle' : ''}`}
+        ref={codeAreaRef}
+      >
+        {canPreviewMarkdown && currentFile && !loadingCode && !codeError && (
+          <div className="cb-view-toggle" aria-label="Markdown 查看模式">
+            <button
+              type="button"
+              className={`cb-view-toggle-btn ${
+                effectiveViewMode === 'source' ? 'cb-view-toggle-btn--active' : ''
+              }`}
+              onClick={() => setViewMode('source')}
+            >
+              源码
+            </button>
+            <button
+              type="button"
+              className={`cb-view-toggle-btn ${
+                effectiveViewMode === 'preview' ? 'cb-view-toggle-btn--active' : ''
+              }`}
+              onClick={() => setViewMode('preview')}
+            >
+              预览
+            </button>
+          </div>
+        )}
         {!currentFile && <p className="cb-placeholder">选择左侧文件查看源码</p>}
         {currentFile && loadingCode && <p className="cb-placeholder">加载中…</p>}
         {currentFile && codeError && <p className="cb-error">{codeError}</p>}
-        {currentFile && !loadingCode && !codeError && (
+        {currentFile && !loadingCode && !codeError && effectiveViewMode === 'preview' && (
+          <div className="cb-md-preview">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ children, ...props }) => (
+                  <a {...props} target="_blank" rel="noreferrer">
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {rawContent}
+            </ReactMarkdown>
+          </div>
+        )}
+        {currentFile && !loadingCode && !codeError && effectiveViewMode === 'source' && (
           <div className="cb-lines">
             {lines.map((html, i) => {
               const line = i + 1

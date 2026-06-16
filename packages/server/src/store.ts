@@ -13,6 +13,45 @@ import {
   type ProjectMeta,
 } from '@sourcerealm/shared'
 
+const RENAME_RETRY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES'])
+const RENAME_RETRY_DELAYS_MS = [25, 50, 100, 200, 400, 800]
+const writeQueues = new Map<string, Promise<void>>()
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function queueKey(target: string): string {
+  const resolved = path.resolve(target)
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved
+}
+
+async function queuedTargetWrite(target: string, fn: () => Promise<void>): Promise<void> {
+  const key = queueKey(target)
+  const previous = writeQueues.get(key) ?? Promise.resolve()
+  const run = previous.then(fn)
+  const settled = run.catch(() => {})
+  writeQueues.set(key, settled)
+  settled.finally(() => {
+    if (writeQueues.get(key) === settled) writeQueues.delete(key)
+  })
+  return run
+}
+
+async function renameWithRetry(source: string, target: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fs.rename(source, target)
+      return
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      const delay = RENAME_RETRY_DELAYS_MS[attempt]
+      if (!code || !RENAME_RETRY_CODES.has(code) || delay === undefined) throw err
+      await sleep(delay)
+    }
+  }
+}
+
 export function dataRoot(): string {
   const configured = process.env.SOURCEREALM_HOME?.trim()
   const defaultBase = process.env.INIT_CWD?.trim() || process.cwd()
@@ -45,9 +84,16 @@ export class ProjectStore {
     const parsed = schema.parse(value)
     const target = path.join(this.dir, file)
     await fs.mkdir(path.dirname(target), { recursive: true })
-    const tmp = `${target}.${randomUUID()}.tmp`
-    await fs.writeFile(tmp, JSON.stringify(parsed, null, 2))
-    await fs.rename(tmp, target)
+    await queuedTargetWrite(target, async () => {
+      const tmp = `${target}.${randomUUID()}.tmp`
+      try {
+        await fs.writeFile(tmp, JSON.stringify(parsed, null, 2))
+        await renameWithRetry(tmp, target)
+      } catch (err) {
+        await fs.rm(tmp, { force: true }).catch(() => {})
+        throw err
+      }
+    })
   }
 
   readMeta() { return this.readJson('project.json', ProjectMetaSchema) }
@@ -76,7 +122,8 @@ export class ProjectStore {
     await fs.mkdir(levelsDir, { recursive: true })
     for (const name of entries) {
       if (!name.endsWith('.json')) continue
-      await fs.rename(path.join(nextDir, name), path.join(levelsDir, name))
+      const target = path.join(levelsDir, name)
+      await queuedTargetWrite(target, () => renameWithRetry(path.join(nextDir, name), target))
     }
     await fs.rm(nextDir, { recursive: true, force: true })
   }

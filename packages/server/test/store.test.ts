@@ -1,5 +1,6 @@
+import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProjectStore, dataRoot, projectIdFor } from '../src/store.js'
 import { emptyProgress } from '@sourcerealm/shared'
 import type { Level, ProjectMeta } from '@sourcerealm/shared'
@@ -22,6 +23,10 @@ const level: Level = {
 describe('ProjectStore', () => {
   beforeEach(async () => {
     await makeDataHome()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('projectIdFor 对同一路径稳定', () => {
@@ -53,6 +58,47 @@ describe('ProjectStore', () => {
     await store.writeLevel(level)
     expect((await store.readLevel('lv1'))!.tasks).toHaveLength(1)
     expect(await store.readLevel('nope')).toBeNull()
+  })
+
+  it('rename 短暂 EPERM 时会重试并清理临时文件', async () => {
+    const originalRename = fs.rename.bind(fs)
+    let calls = 0
+    vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+      calls++
+      if (calls === 1) {
+        throw Object.assign(new Error('locked'), { code: 'EPERM' })
+      }
+      return originalRename(from, to)
+    })
+
+    const store = new ProjectStore('abc123')
+    await store.writeMeta(meta)
+
+    expect(calls).toBe(2)
+    expect((await store.readMeta())!.name).toBe('demo')
+    const files = await fs.readdir(store.dir)
+    expect(files.filter((name) => name.endsWith('.tmp'))).toEqual([])
+  })
+
+  it('rename 持续失败时抛出原错误并清理本次临时文件', async () => {
+    vi.spyOn(fs, 'rename').mockRejectedValue(Object.assign(new Error('locked'), { code: 'EPERM' }))
+
+    const store = new ProjectStore('abc123')
+    await expect(store.writeMeta(meta)).rejects.toThrow('locked')
+
+    const files = await fs.readdir(store.dir)
+    expect(files.filter((name) => name.endsWith('.tmp'))).toEqual([])
+  })
+
+  it('并发写同一个 JSON 时按目标文件串行落盘', async () => {
+    const store = new ProjectStore('abc123')
+    await Promise.all(
+      Array.from({ length: 6 }, (_, index) => store.writeMeta({ ...meta, name: `demo-${index}` })),
+    )
+
+    const saved = await store.readMeta()
+    expect(saved?.name).toMatch(/^demo-\d$/)
+    expect(saved?.id).toBe('abc123')
   })
 
   it('写入不合 schema 的数据直接抛错', async () => {

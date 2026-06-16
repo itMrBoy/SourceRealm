@@ -9,7 +9,7 @@ export function readConcurrency(env: NodeJS.ProcessEnv = process.env): number {
 
 /**
  * 受限并发执行:对 items 逐个调用 worker,同时进行的任务数不超过 limit。
- * 保持与输入同序返回结果;worker 内部自行 try/catch(调用方决定单项失败是否影响整体)。
+ * 保持与输入同序返回结果;未捕获错误会停止调度新任务,等待已启动任务收尾后再抛出。
  */
 export async function runWithConcurrency<T, R>(
   items: T[],
@@ -18,14 +18,22 @@ export async function runWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length)
   let next = 0
+  let firstError: unknown = null
   const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (true) {
+      if (firstError) return
       const i = next++
       if (i >= items.length) return
-      results[i] = await worker(items[i], i)
+      try {
+        results[i] = await worker(items[i], i)
+      } catch (err) {
+        firstError ??= err
+        return
+      }
     }
   })
   await Promise.all(runners)
+  if (firstError) throw firstError
   return results
 }
 

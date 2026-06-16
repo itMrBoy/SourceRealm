@@ -65,6 +65,25 @@ describe('runWithConcurrency', () => {
     expect(out).toEqual([2, 4, 6, 8, 10, 12])
     expect(peak).toBeLessThanOrEqual(2)
   })
+
+  it('遇到错误后停止调度新任务,并等待已启动任务收尾', async () => {
+    const started: number[] = []
+    const finished: number[] = []
+
+    await expect(runWithConcurrency([1, 2, 3, 4], 2, async (n) => {
+      started.push(n)
+      if (n === 1) {
+        await new Promise((r) => setTimeout(r, 10))
+        throw new Error('boom')
+      }
+      await new Promise((r) => setTimeout(r, 30))
+      finished.push(n)
+      return n
+    })).rejects.toThrow('boom')
+
+    expect(started).toEqual([1, 2])
+    expect(finished).toEqual([2])
+  })
 })
 
 describe('LevelGenerator', () => {
