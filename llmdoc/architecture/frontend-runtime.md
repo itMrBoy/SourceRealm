@@ -11,6 +11,7 @@ Primary package: `packages/web`.
 - course
 - progress
 - selected level
+- temporary reward-wall return snapshot for an unfinished level
 - file tree cache
 - muted/CRT settings
 - update baseline
@@ -41,8 +42,15 @@ The runtime can snapshot unfinished levels into `Progress.levelRuns[levelId]` an
 - `LevelScreen.tsx` loads level data, auto-opens the current task's first referenced file, wires treasure-hunt line clicks, manages split layout, and submits settlement.
 - Level exits show a three-action confirm when an unfinished checkpoint exists: save and leave, discard progress, or continue. Page close/refresh performs a best-effort checkpoint save.
 - Before entering a level, `LevelScreen.tsx` refreshes the project snapshot from the backend so checkpoint restore uses the latest persisted `progress.levelRuns`, not a stale in-memory store from the previous map/home view.
+- When `LevelScreen` is reached by continuing from the reward wall, it first merges the temporary reward-wall snapshot into `progress.levelRuns[levelId]` and then calls `useRun.loadLevel()`. The load effect should read that temporary snapshot once from `useStore.getState()` and should not subscribe to it; clearing the snapshot after merge must not trigger a second backend refresh that overwrites the local restore state.
 - Explicit "save and leave" must only navigate after the checkpoint save succeeds. Save failures are surfaced through toast and keep the player in the level so they do not falsely believe progress was persisted.
-- `BadgesScreen.tsx` and `CertScreen.tsx` render reward/progress surfaces.
+- `BadgesScreen.tsx` and `CertScreen.tsx` render reward/progress surfaces. If `BadgesScreen` is opened from an unfinished level through the persistent global controls, the global store carries a temporary `SavedRun` snapshot. In that mode the screen shows a "continue level" action; returning to the map or main menu must confirm save/discard/continue using the same checkpoint semantics as Level exit.
+
+## Persistent Controls
+
+`GlobalControls.tsx` renders the top-right persistent controls across screens. These controls are independent from screen-local navigation. Avoid duplicating a main-menu button inside `LevelScreen`; keep the Level header focused on the level title plus a local exit-to-map action, while the persistent main-menu control remains global.
+
+Opening badges from a level should snapshot `useRun.getState().snapshot()` before changing screens and store it as `badgesReturnRun`. Opening badges from non-level screens should clear that temporary return state so the reward wall behaves like a normal progress surface.
 
 ## Global Feedback
 

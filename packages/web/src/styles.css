@@ -61,6 +61,30 @@ body {
 }
 
 /* CRT 扫描线滤镜(可开关) */
+.crt::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.2;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(ellipse at center, rgba(74, 214, 200, 0.08) 0%, rgba(74, 214, 200, 0.02) 42%, rgba(15, 15, 35, 0) 72%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.06)),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(74, 214, 200, 0.05) 0,
+      rgba(74, 214, 200, 0.05) 1px,
+      rgba(0, 0, 0, 0) 1px,
+      rgba(0, 0, 0, 0) 4px
+    );
+  background-size: 100% 100%, 100% 100%, 100% 4px;
+  animation: crt-scan 9s linear infinite;
+}
+
 .crt::after {
   content: '';
   position: fixed;
@@ -69,13 +93,23 @@ body {
   height: 100vh;
   pointer-events: none;
   z-index: 9999;
+  opacity: 0.9;
   background: repeating-linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0) 0,
     rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, 0.18) 3px,
-    rgba(0, 0, 0, 0.18) 3px
+    rgba(0, 0, 0, 0.24) 3px,
+    rgba(0, 0, 0, 0.24) 4px
   );
+}
+
+@keyframes crt-scan {
+  0% {
+    background-position: 0 0, 0 0, 0 0;
+  }
+  100% {
+    background-position: 0 0, 0 0, 0 4px;
+  }
 }
 
 @keyframes blink {
@@ -343,6 +377,26 @@ body {
   flex-wrap: wrap;
 }
 
+/* ---------- GlobalControls(常驻右上角控制) ---------- */
+.global-controls {
+  position: fixed;
+  top: 10px;
+  right: 16px;
+  z-index: 9400;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: min(520px, calc(100vw - 32px));
+}
+
+.global-control-btn {
+  font-size: 10px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
 /* ---------- HUD(顶栏数值) ---------- */
 .hud {
   position: sticky;
@@ -352,7 +406,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 16px;
+  padding: 10px 360px 10px 16px;
   background-color: var(--cq-bg-alt);
   border-bottom: 4px solid var(--cq-gold-dim);
   flex-wrap: wrap;
@@ -412,18 +466,6 @@ body {
   white-space: nowrap;
   display: inline-block;
   max-width: 100%;
-}
-
-.hud-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.hud-btn {
-  font-size: 10px;
-  padding: 4px 8px;
 }
 
 /* ---------- Map(闯关地图) ---------- */
@@ -652,7 +694,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 16px;
+  padding: 8px 360px 8px 16px;
   background-color: var(--cq-bg-alt);
   border-bottom: 4px solid var(--cq-gold-dim);
 }
@@ -1242,6 +1284,27 @@ body.col-resizing {
   color: var(--cq-danger);
 }
 
+.tp-review-skip {
+  color: var(--cq-gold);
+}
+
+.tp-review-nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.tp-review-prev,
+.tp-review-next {
+  font-size: 9px;
+  padding: 4px 8px;
+}
+
+/* 仅一个方向可翻时,后一题始终靠右,更前一题靠左 */
+.tp-review-next {
+  margin-left: auto;
+}
+
 .tp-failed-head,
 .tp-done-head {
   font-size: 16px;
@@ -1692,6 +1755,17 @@ body.col-resizing {
   margin: 0 auto;
 }
 
+.badges-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.badges-actions .badges-back {
+  margin: 0;
+}
+
 /* ---------- Cert(通关证书) ---------- */
 .cert-main {
   flex: 1;
@@ -1775,6 +1849,7 @@ body.col-resizing {
     color: #000;
   }
   .crt::after,
+  .global-controls,
   .hud,
   .cert-hud,
   .cert-actions {
@@ -1787,6 +1862,25 @@ body.col-resizing {
 }
 
 @media (max-width: 720px) {
+  .global-controls {
+    top: 8px;
+    right: 8px;
+    max-width: calc(100vw - 16px);
+  }
+
+  .global-control-btn {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  .hud {
+    padding: 64px 16px 10px;
+  }
+
+  .level-bar {
+    padding: 64px 16px 8px;
+  }
+
   .home-path-row {
     flex-direction: column;
   }

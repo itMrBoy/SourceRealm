@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Task } from '@sourcerealm/shared'
+import type { SavedAnswer, Task } from '@sourcerealm/shared'
 import { useRun } from '../game/run.js'
 import { QuizTask } from './tasks/QuizTask.js'
 import { TreasureHuntTask } from './tasks/TreasureHuntTask.js'
@@ -42,11 +42,18 @@ export function TaskPanel({
   const retryTask = useRun((s) => s.retryTask)
   const retryLevel = useRun((s) => s.retryLevel)
   const skipStale = useRun((s) => s.skipStale)
-  const [showPrevious, setShowPrevious] = useState(false)
+  // 正在回顾的题号(null 表示未打开回顾);可在 0..taskIndex-1 间双向翻页
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null)
 
-  const previousTask = taskIndex > 0 ? level?.tasks[taskIndex - 1] : undefined
-  const previousAnswer = answeredHistory.find((a) => a.taskIndex === taskIndex - 1)
-  const canViewPrevious = Boolean(previousTask && previousAnswer)
+  const canViewPrevious = taskIndex > 0 && Boolean(level?.tasks[taskIndex - 1])
+  const reviewTask = reviewIndex !== null ? level?.tasks[reviewIndex] : undefined
+  const reviewAnswer =
+    reviewIndex !== null ? answeredHistory.find((a) => a.taskIndex === reviewIndex) : undefined
+
+  // 切到新题时关闭回顾弹窗,避免停留在旧索引
+  useEffect(() => {
+    setReviewIndex(null)
+  }, [task.id])
 
   // 源码已变化:自动跳过(不计分)
   useEffect(() => {
@@ -97,7 +104,7 @@ export function TaskPanel({
             className="nes-btn tp-prev-btn"
             onClick={() => {
               click()
-              setShowPrevious(true)
+              setReviewIndex(taskIndex - 1)
             }}
           >
             上一题
@@ -105,12 +112,22 @@ export function TaskPanel({
         )}
       </div>
 
-      {showPrevious && previousTask && previousAnswer && (
+      {reviewIndex !== null && reviewTask && (
         <PreviousReview
-          task={previousTask}
-          correct={previousAnswer.correct}
-          explanation={previousAnswer.explanation}
-          onClose={() => setShowPrevious(false)}
+          task={reviewTask}
+          reviewIndex={reviewIndex}
+          answer={reviewAnswer}
+          canGoEarlier={reviewIndex > 0}
+          canGoLater={reviewIndex < taskIndex - 1}
+          onEarlier={() => {
+            click()
+            setReviewIndex((i) => (i !== null && i > 0 ? i - 1 : i))
+          }}
+          onLater={() => {
+            click()
+            setReviewIndex((i) => (i !== null && i < taskIndex - 1 ? i + 1 : i))
+          }}
+          onClose={() => setReviewIndex(null)}
         />
       )}
 
@@ -164,29 +181,55 @@ export function TaskPanel({
 
 function PreviousReview({
   task,
-  correct,
-  explanation,
+  reviewIndex,
+  answer,
+  canGoEarlier,
+  canGoLater,
+  onEarlier,
+  onLater,
   onClose,
 }: {
   task: Task
-  correct: boolean
-  explanation: string
+  reviewIndex: number
+  answer: SavedAnswer | undefined
+  canGoEarlier: boolean
+  canGoLater: boolean
+  onEarlier: () => void
+  onLater: () => void
   onClose: () => void
 }): JSX.Element {
+  // 源码已变化被跳过的题没有作答记录,讲解文案回退到题目自带的 explanation
+  const explanation = answer?.explanation ?? task.explanation
   return (
     <div className="nes-container is-rounded is-dark tp-review">
       <div className="tp-review-head">
-        <span>上一题回顾</span>
+        <span>回顾 第 {reviewIndex + 1} 题</span>
         <button type="button" className="nes-btn tp-review-close" onClick={onClose}>
           关闭
         </button>
       </div>
       <p className="tp-review-narrative">{task.narrative}</p>
       <p className="tp-review-question">{taskPrompt(task)}</p>
-      <p className={correct ? 'tp-review-ok' : 'tp-review-no'}>
-        作答结果:{correct ? '答对' : '答错'}
-      </p>
+      {answer ? (
+        <p className={answer.correct ? 'tp-review-ok' : 'tp-review-no'}>
+          作答结果:{answer.correct ? '答对' : '答错'}
+        </p>
+      ) : (
+        <p className="tp-review-skip">本题已跳过(源码已变化)</p>
+      )}
       <p className="tp-explanation">{explanation}</p>
+      <div className="tp-review-nav">
+        {canGoEarlier && (
+          <button type="button" className="nes-btn tp-review-prev" onClick={onEarlier}>
+            ← 更前一题
+          </button>
+        )}
+        {canGoLater && (
+          <button type="button" className="nes-btn tp-review-next" onClick={onLater}>
+            后一题 →
+          </button>
+        )}
+      </div>
     </div>
   )
 }

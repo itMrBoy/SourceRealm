@@ -4,14 +4,8 @@ import { useStore } from '../store.js'
 export function Hud(): JSX.Element {
   const progress = useStore((s) => s.progress)
   const projectName = useStore((s) => s.projectName)
-  const muted = useStore((s) => s.muted)
-  const crt = useStore((s) => s.crt)
-  const toggleMuted = useStore((s) => s.toggleMuted)
-  const toggleCrt = useStore((s) => s.toggleCrt)
-  const setScreen = useStore((s) => s.setScreen)
 
   const info = levelInfo(progress.xp)
-  const badgeCount = progress.badges.length
 
   // XP 进度:从当前称号区间下界填到 nextAt;nextAt 为 null 时已满级
   const lower = lowerBound(progress.xp)
@@ -38,41 +32,6 @@ export function Hud(): JSX.Element {
         <span className="hud-project" title={projectName}>
           {projectName || '未命名项目'}
         </span>
-      </div>
-
-      <div className="hud-right">
-        <button
-          type="button"
-          className="nes-btn hud-btn"
-          onClick={() => setScreen('home')}
-          title="返回主菜单"
-        >
-          主菜单
-        </button>
-        <button
-          type="button"
-          className="nes-btn hud-btn hud-badges"
-          onClick={() => setScreen('badges')}
-          title="查看徽章"
-        >
-          ⭐ {badgeCount}
-        </button>
-        <button
-          type="button"
-          className={`nes-btn hud-btn ${crt ? 'is-primary' : ''}`}
-          onClick={toggleCrt}
-          title="CRT 扫描线开关"
-        >
-          CRT {crt ? '开' : '关'}
-        </button>
-        <button
-          type="button"
-          className={`nes-btn hud-btn ${muted ? 'is-error' : ''}`}
-          onClick={toggleMuted}
-          title="静音开关"
-        >
-          {muted ? '🔇' : '🔊'}
-        </button>
       </div>
     </header>
   )

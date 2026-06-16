@@ -24,7 +24,7 @@ This directory is the stable project memory for SourceRealm. Temporary research 
 
 ## Reference
 
-- `llmdoc/reference/data-model.md` - shared schemas, stored JSON files, task types, and scoring.
+- `llmdoc/reference/data-model.md` - shared schemas, stored JSON files, task types, scoring, and judging semantics.
 - `llmdoc/reference/commands.md` - common repo commands and environment variables.
 
 ## Memory

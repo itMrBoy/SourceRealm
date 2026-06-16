@@ -32,7 +32,10 @@ export function judgeCodeFill(answers: string[], submitted: string[]): boolean {
   return answers.every((a, i) => normalizeCode(a) === normalizeCode(submitted[i] ?? ''))
 }
 
-/** code-type:逐字符比对。accuracy = 已输入字符中正确的比例(空输入计 1) */
+/**
+ * code-type:逐字符比对统计 correct/accuracy(实时显示用)。
+ * complete 忽略空白差异:行首尾空白不计、行内空白只匹配有无(不计长度)、忽略结尾空行。
+ */
 export function judgeCodeType(expected: string, typed: string): { correct: number; accuracy: number; complete: boolean } {
   let correct = 0
   for (let i = 0; i < typed.length && i < expected.length; i++) {
@@ -41,6 +44,6 @@ export function judgeCodeType(expected: string, typed: string): { correct: numbe
   return {
     correct,
     accuracy: typed.length === 0 ? 1 : correct / typed.length,
-    complete: typed === expected,
+    complete: typed.length > 0 && normalizeCode(typed) === normalizeCode(expected),
   }
 }

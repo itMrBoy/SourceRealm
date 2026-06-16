@@ -8,6 +8,7 @@
 - Server storage serializes per-target JSON writes and retries transient Windows rename failures during atomic writes.
 - Incremental update supports modified, deleted, renamed, copied, added files, stale/obsolete levels, append threshold, `levels-next` staging, promotion, and progress preservation.
 - Frontend has Home, Generating, Map, Level, Badges, and Cert screens, with Zustand stores, CodeBrowser source/Markdown preview modes, and task components for quiz, treasure-hunt, call-chain, code-fill, and code-type.
+- A persistent global controls bar (`GlobalControls.tsx`) renders the top-right main-menu/badges/CRT/mute actions across all screens; opening badges from an unfinished level snapshots the run so the reward wall can offer continue/save/discard.
 - Tests cover core shared logic and server integration/update behavior.
 
 ## Important Naming Risk

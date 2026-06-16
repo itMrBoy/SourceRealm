@@ -74,13 +74,30 @@ export function LevelScreen(): JSX.Element {
     if (!projectId || !levelId) return () => reset()
     let alive = true
     void (async () => {
+      const returnRun = useStore.getState().badgesReturnRun
       try {
         const { course: c, progress } = await api.getProject(projectId)
         if (!alive) return
         setCourse(c)
-        setProgress(progress)
+        if (returnRun?.levelId === levelId) {
+          setProgress({
+            ...progress,
+            levelRuns: { ...(progress.levelRuns ?? {}), [levelId]: returnRun },
+          })
+          useStore.getState().setBadgesReturnRun(null)
+        } else {
+          setProgress(progress)
+        }
       } catch {
         if (alive) pushToast('warning', '读取最新进度失败，将尝试使用本地已有进度进入关卡')
+        if (alive && returnRun?.levelId === levelId) {
+          const currentProgress = useStore.getState().progress
+          setProgress({
+            ...currentProgress,
+            levelRuns: { ...(currentProgress.levelRuns ?? {}), [levelId]: returnRun },
+          })
+          useStore.getState().setBadgesReturnRun(null)
+        }
       }
       if (alive) void loadLevel(projectId, levelId)
     })()
@@ -88,7 +105,15 @@ export function LevelScreen(): JSX.Element {
       alive = false
       reset()
     }
-  }, [projectId, levelId, loadLevel, pushToast, reset, setCourse, setProgress])
+  }, [
+    projectId,
+    levelId,
+    loadLevel,
+    pushToast,
+    reset,
+    setCourse,
+    setProgress,
+  ])
 
   const task: Task | undefined = level?.tasks[taskIndex]
   const taskCount = level?.tasks.length ?? 0
@@ -250,9 +275,6 @@ export function LevelScreen(): JSX.Element {
         </span>
         <button type="button" className="nes-btn level-exit" onClick={() => leaveLevel('map')}>
           退出
-        </button>
-        <button type="button" className="nes-btn level-exit" onClick={() => leaveLevel('home')}>
-          主菜单
         </button>
       </div>
 

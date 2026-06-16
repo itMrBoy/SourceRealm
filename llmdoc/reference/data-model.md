@@ -78,3 +78,11 @@ Rating:
 - A: accuracy >= 0.9
 - B: accuracy >= 0.7
 - C: otherwise
+
+## Judging Semantics
+
+Source: `packages/shared/src/judge.ts`.
+
+`code-fill` and `code-type` completion are whitespace-insensitive: both compare via `normalizeCode` (collapse intra-line whitespace, trim line ends, drop empty lines), so completion requires only visible content to match. Trailing newlines/blank lines and intra-line whitespace length differences are ignored; empty input never counts as complete.
+
+`code-type` accuracy/correct stays character-for-character (live progress display). Only the completion gate uses normalization. The gate must stay whitespace-insensitive because the frontend auto-submits a code-type task when its `complete` flag turns true; a stricter equality check deadlocks any expected snippet with trailing whitespace the player cannot reproduce.

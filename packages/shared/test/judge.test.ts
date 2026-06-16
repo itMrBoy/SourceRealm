@@ -42,6 +42,20 @@ describe('judgeCodeType', () => {
     expect(r.complete).toBe(false)
     expect(judgeCodeType('abc', '')).toEqual({ correct: 0, accuracy: 1, complete: false })
   })
+
+  it('complete 忽略空白差异', () => {
+    // 结尾多一个换行/空行仍判完成(本次 bug 主因)
+    expect(judgeCodeType('a\nb', 'a\nb\n').complete).toBe(true)
+    expect(judgeCodeType('a\nb', 'a\nb\n\n').complete).toBe(true)
+    // 行首缩进/行内空白长度不同仍判完成
+    expect(judgeCodeType('  foo(a, b)', 'foo(a,  b)').complete).toBe(true)
+    // 单词被连在一起(缺分隔)判未完成
+    expect(judgeCodeType('a b', 'ab').complete).toBe(false)
+    // 可见内容不一致仍判未完成
+    expect(judgeCodeType('foo', 'bar').complete).toBe(false)
+    // 空输入不判完成
+    expect(judgeCodeType('abc', '').complete).toBe(false)
+  })
 })
 
 describe('normalizeCode', () => {
