@@ -12,7 +12,7 @@ Primary entrypoint: `packages/server/src/app.ts`.
 - `GET /api/projects` - list known project metadata from data root.
 - `GET /api/provider` - detect and report current provider.
 - `GET /api/projects/:id` - return meta, course, and progress.
-- `POST /api/projects/:id/generate` - reset failed outlines to pending and resume generation.
+- `POST /api/projects/:id/generate` - reset failed/generating outlines to pending and resume generation.
 - `GET /api/projects/:id/events` - SSE stream for generator/updater events.
 - `GET /api/projects/:id/levels/:levelId` - return level plus per-task reference freshness.
 - `GET /api/projects/:id/file?path=...` - read a source file from the imported repository.
@@ -38,6 +38,8 @@ Incremental update endpoints are covered in `llmdoc/architecture/incremental-upd
 6. On per-level failure, marks outline `failed` and emits `level-failed`.
 7. On completion, writes generation status `done` and emits `done`.
 
+Generation retry (`POST /api/projects/:id/generate`) is idempotent while a generator is already active. When retrying an incomplete course, `failed` and leftover `generating` outlines are reset to `pending`; `ready` levels remain reusable and should not be regenerated.
+
 `mapCourse` sends the file tree and README excerpt to the provider, validates against a zod draft schema, filters files to known paths, and creates pending outlines.
 
 `generateLevel` sends numbered file content for the outline files, validates draft tasks, verifies all refs by reading actual code ranges, backfills `contentHash`, and writes a ready `Level`.
@@ -55,6 +57,10 @@ Incremental update endpoints are covered in `llmdoc/architecture/incremental-upd
 ## Storage
 
 `ProjectStore` validates every read/write through shared schemas. Writes are atomic at the file level: write temp JSON, then rename.
+
+Writes are also serialized per target path before the temp-file rename. This avoids overlapping writes to the same JSON file during generation, progress saves, or level promotion.
+
+On Windows, temp-file rename can fail transiently when replacing an existing JSON file. `ProjectStore` retries `EPERM`, `EBUSY`, and `EACCES` with short backoff, removes the temp file on failure, and then rethrows if the rename never succeeds.
 
 Project ids are the first 12 hex chars of SHA-256 over the resolved repository path.
 

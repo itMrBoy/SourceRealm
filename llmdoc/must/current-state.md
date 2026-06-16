@@ -5,8 +5,9 @@
 - Shared zod schemas and pure judging/scoring helpers exist.
 - Fastify API supports project import/list/read, provider status, generation retry, update check, update run, SSE events, level read with freshness, source file read, file tree, level progress submission, and file-read progress.
 - Server generation supports course mapping, per-level generation, schema retry, task reference verification, and content hash backfill.
+- Server storage serializes per-target JSON writes and retries transient Windows rename failures during atomic writes.
 - Incremental update supports modified, deleted, renamed, copied, added files, stale/obsolete levels, append threshold, `levels-next` staging, promotion, and progress preservation.
-- Frontend has Home, Generating, Map, Level, Badges, and Cert screens, with Zustand stores and task components for quiz, treasure-hunt, call-chain, code-fill, and code-type.
+- Frontend has Home, Generating, Map, Level, Badges, and Cert screens, with Zustand stores, CodeBrowser source/Markdown preview modes, and task components for quiz, treasure-hunt, call-chain, code-fill, and code-type.
 - Tests cover core shared logic and server integration/update behavior.
 
 ## Important Naming Risk

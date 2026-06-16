@@ -63,6 +63,8 @@ The two zones share one active file state. Selecting a pinned level file should 
 
 Do not infer task relevance from directory co-location. Level files can span different packages or directories in a monorepo; the full tree is for location/context, while `level.files` remains the source of task relevance.
 
+For `.md` files, the code pane exposes a view-mode toggle between source and rendered Markdown preview. Source remains the default every time a file is loaded, preserving line numbers, line highlighting, and treasure-hunt click behavior. Preview uses the raw file content with GitHub-flavored Markdown support and is limited to Markdown files.
+
 ## Level Semantics
 
 The runtime starts each level with 3 hearts. Correct answers add XP with combo multiplier, increment combo, and advance after feedback. Wrong answers reset combo, decrement hearts, and fail the level when hearts reach zero.
