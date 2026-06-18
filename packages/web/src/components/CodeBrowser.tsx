@@ -383,7 +383,9 @@ export function CodeBrowser({
                 title={f}
               >
                 <span className="cb-file-star">★</span>
-                <span className="cb-file-name">{f}</span>
+                <span className="cb-file-name">
+                  <span className="cb-file-name-text">{f}</span>
+                </span>
               </button>
             </li>
           ))}

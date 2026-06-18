@@ -832,6 +832,14 @@ body.col-resizing {
   white-space: nowrap;
   direction: rtl;
   text-align: left;
+  min-width: 0;
+  flex: 1;
+}
+
+/* 内层 ltr 避免 rtl 截断技巧把 .dotfile 的前导点移到末尾 */
+.cb-file-name-text {
+  direction: ltr;
+  unicode-bidi: embed;
 }
 
 .cb-file-empty {
