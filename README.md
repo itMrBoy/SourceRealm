@@ -341,12 +341,6 @@ pnpm --filter @sourcerealm/web build
 
 ---
 
-## 包名与历史命名
+## 规划
 
-当前 package manifests 使用：
-
-- `@sourcerealm/shared`
-- `@sourcerealm/server`
-- `@sourcerealm/web`
-
-仓库中仍可能存在历史文档或注释提到 `code-quest` / `@code-quest/*`。修改构建、安装或包元数据时，不要只改一侧；应先确认迁移目标并保持 manifests、imports、scripts、README 和测试一致。
+正在进行agent化重构迁移，敬请期待...
