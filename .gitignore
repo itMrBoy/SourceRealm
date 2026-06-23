@@ -8,7 +8,6 @@ dist/
 .env.*
 !.env.example
 .claude/
-AGENT_DEVELOPMENT_AND_REFACTOR_PLAN.md
 paseo.json
 .sourcerealm
 .mimocode/
